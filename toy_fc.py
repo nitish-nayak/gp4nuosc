@@ -122,7 +122,7 @@ class Generate:
       pois.SetSeed(0)
       samples = pois.Poisson(self.trueE.Integral(0.1,5))
 
-      recoE_data = TH1D("recoE_data", "recoE_data", nbins, 0.5, 4.5)
+      recoE_data = TH1D(hname, hname, nbins, 0.5, 4.5)
       for i in xrange(samples+10000):
         trueE_i = self.trueE.GetRandom()
         res_i = 1.
@@ -341,7 +341,8 @@ nuis_mc['flux_sigma'] = 1.
 
 osc_seed = osc_mc.copy()
 nuis_seed = nuis_mc.copy()
-fitter = Fitter([kFitDcpInPi, kFitSinSqTheta23, kFitDmsq32],['xsec_sigma', 'flux_sigma'])
+#  fitter = Fitter([kFitDcpInPi, kFitSinSqTheta23, kFitDmsq32],['xsec_sigma', 'flux_sigma'])
+fitter = Fitter([kFitDcpInPi, kFitSinSqTheta23],['xsec_sigma', 'flux_sigma'])
 fitter.InitMinuit()
 model = Generate()
 for i in range(10000):
