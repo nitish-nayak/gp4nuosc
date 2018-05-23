@@ -110,7 +110,7 @@ class Generate:
 
     return recoE_pred
 
-  def Data(self, osc_params, nuis_params, isfake, hname="recoE_data"):
+  def Data(self, osc_params, nuis_params, isfake=False, hname="recoE_data"):
 
 
     self.SetParams(osc_params, nuis_params)
