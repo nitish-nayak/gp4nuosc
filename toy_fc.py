@@ -227,6 +227,10 @@ kFitSinSq2Theta23 = FitConstrainedVar('ssth23', 'theta23', lambda x: sin(2*x)**2
 
 kFitDmsq32 = FitConstrainedVar('dmsq_32', 'dmsq_32', lambda x: x*1000.,
                                 lambda x: x/1000., -4, 4)
+kFitDmsq32NH = FitConstrainedVar('dmsq_32', 'dmsq_32', lambda x: x*1000.,
+                                lambda x: x/1000., 2.3, 2.8)
+kFitDmsq32IH = FitConstrainedVar('dmsq_32', 'dmsq_32', lambda x: x*1000.,
+                                lambda x: x/1000., -2.8, -2.3)
 
 class Fitter():
   def __init__(self, fitvars, systs):
@@ -297,7 +301,6 @@ class Fitter():
     for systidx in xrange(len(self.systs)):
        par, err = Double(), Double()
        self.gMinuit.GetParameter(len(self.fitvars)+systidx, par, err)
-       nuis_seed[self.systs[systidx]] = par
        nuis_seed.update({self.systs[systidx]:par})
 
     return amin
@@ -341,12 +344,14 @@ nuis_mc['flux_sigma'] = 1.
 
 osc_seed = osc_mc.copy()
 nuis_seed = nuis_mc.copy()
-#  fitter = Fitter([kFitDcpInPi, kFitSinSqTheta23, kFitDmsq32],['xsec_sigma', 'flux_sigma'])
-fitter = Fitter([kFitDcpInPi, kFitSinSqTheta23],['xsec_sigma', 'flux_sigma'])
+fitter = Fitter([kFitDcpInPi, kFitSinSqTheta23, kFitDmsq32],['xsec_sigma', 'flux_sigma'])
+#  fitter = Fitter([kFitDcpInPi, kFitSinSqTheta23],['xsec_sigma', 'flux_sigma'])
 fitter.InitMinuit()
 model = Generate()
 for i in range(10000):
   nuis_data['xsec_sigma'] = np.random.rand(1)[0]
   mock_data = model.Data(osc_data, nuis_data, True)
+  print osc_seed['dcp']
   print fitter.Fit(mock_data, osc_seed, nuis_seed)
+  print osc_seed['dcp']
   mock_data.Delete()
