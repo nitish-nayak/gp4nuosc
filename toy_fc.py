@@ -2,6 +2,7 @@ from ROOT import *
 from array import array
 from math import *
 import numpy as np
+from scipy.linalg import eigh
 
 class Generate:
   def __init__(self):
@@ -12,6 +13,18 @@ class Generate:
     self.trueE.SetParName(2, "theta23")
     self.trueE.SetParName(3, "dmsq_32")
     self.trueE.SetParName(4, "dcp")
+
+    self.km2ev = 5.06773103202e+09
+    self.k2 = 4.62711492217e-09
+    self.GeV2eV = 1.0e+09
+    self.Gf = 1.166371e-5
+    self.Ne = 1.42
+    self.dm2_31 = 0.
+
+    self.oscH = np.zeros([3,3], dtype=complex)
+    self.nustate = np.zeros(3, dtype=complex)
+    self.nustate[1] = 1.
+    self.initoscH = False
 
   def XSec(self, E, sigma):
     """
@@ -35,6 +48,49 @@ class Generate:
     form = weight*(TMath.Landau(E, 2, weight))
     return form
 
+  def InitOsc(self, th23, dm2_32, dcp):
+    
+    th13 = asin(sqrt(2.10e-2))    # reactor mixing angle
+    th12 = asin(sqrt(0.307))      
+    dm2_21 = 7.53e-5
+    self.dm2_31 = dm2_32+dm2_21
+
+    h11 = dm2_21/self.dm2_31
+    sij = sin(th12)
+    cij = cos(th12)
+
+    h00 = h11*sij*sij - 1.
+    h01 = h11*sij*cij
+    h11 = h11*cij*cij - 1.
+
+    sij = sin(th13)
+    cij = cos(th13)
+    expCP = complex(cos(dcp), -sin(dcp))
+
+    h02 = (-h00*sij*cij)*expCP
+    h12 = (-h01*sij)*expCP
+    h11 -= h00*sij*sij
+    h00 *= cij*cij - sij*sij
+    h01 *= cij
+
+    sij = sin(th23)
+    cij = cos(th23)
+
+    self.oscH[0, 0] = h00 - 0.5*h11
+    self.oscH[1, 1] = 0.5*h11*(cij*cij - sij*sij) + 2*h12.real*cij*sij
+    self.oscH[2, 2] = -self.oscH[1, 1]
+
+    self.oscH[0, 1] = h02*sij + h01*cij
+    self.oscH[0, 2] = h02*cij - h01*sij
+    self.oscH[1, 2] = h12 - (h11*cij + 2*h12.real*sij)*sij
+
+    self.oscH[1, 0] = self.oscH[0, 1].conjugate()
+    self.oscH[2, 0] = self.oscH[0, 2].conjugate()
+    self.oscH[2, 1] = self.oscH[1, 2].conjugate()
+
+    self.initoscH = True
+    return 
+
   def Calc(self, E, th23, dm2_32, dcp):
     """
     Calculator for oscillation probabilities
@@ -45,45 +101,25 @@ class Generate:
           (Note: 2e-3 < abs(dm2_32) < 3e-3 for realistic situations)
     """
      
-    th13 = asin(sqrt(2.10e-2))    # reactor mixing angle
-    th12 = asin(sqrt(0.307))      
-    c23 = cos(th23)
-    s23 = sin(th23)
-    c12 = cos(th12)
-    s12 = sin(th12)
-    c13 = cos(th13)
-    s13 = sin(th13)
-    L=810.                        # baseline
-    dm2_21 = 7.53e-5
-    dm2_31 = dm2_32+dm2_21
-    alpha = dm2_21/dm2_31
+    L=810.          # baseline
+    self.InitOsc(th23, dm2_32, dcp)
+    lv = 2.*self.GeV2eV*E/self.dm2_31
+    kr2GNe = self.k2*sqrt(2)*self.Gf*self.Ne
 
-    phi31 = 1.27*(dm2_31)*L
-    phi32 = 1.27*dm2_32*L
-    phi21 = 1.27*dm2_21*L
+    A = self.oscH/lv
+    A[0, 0] += kr2GNe
 
-    matter_a = 3.355e-4*E/dm2_31
-
-    coeff_a = 4.*(c13**2.)*(s13**2.)*(s23**2.)
-    form_a = (TMath.Sin((1-matter_a)*phi31/E)**2)/((1-matter_a)**2)
-
-    coeff_c = 4.*(alpha**2)*(c23**2)*(c12**2)*(s12**2)
-    form_c = (TMath.Sin(matter_a*phi31/E)**2)/(matter_a**2)
-
-    coeff_b = -8.*(c13**2.)*(s12*s23*s13)*(c12*c23)*alpha*(sin(dcp))
-    coeff_d = 8.*(c13**2.)*(s12*s23*s13)*(c12*c23)*alpha*(cos(dcp))
-    form_b = TMath.Sin(matter_a*phi31/E)*TMath.Sin((1-matter_a)*phi31/E)/((1-matter_a)*matter_a)
-    form_delta1 = TMath.Sin(phi31/E)
-    form_delta2 = TMath.Cos(phi31/E)
-
-    p_0 = coeff_a*form_a
-    p_3 = coeff_c*form_c
-    p_sin_delta = coeff_b*form_b*form_delta1
-    p_cos_delta = coeff_d*form_b*form_delta2
+    w,v = eigh(A)
+    #  nucomp = np.dot(self.nustate, np.matrix(v).getH())
+    nucomp = np.dot(np.matrix(v).getH(), self.nustate)
+    s = np.sin(-w.real*self.km2ev*L) 
+    c = np.cos(-w.real*self.km2ev*L) 
+    jpart = np.multiply((c+1j*s), nucomp)
     
-    p_osc = p_0 + p_sin_delta + p_cos_delta + p_3
-    if p_osc < 0:
-      p_osc = 0.
+    amp_osc = np.dot(v, np.transpose(jpart))
+    #  amp_osc = np.dot(jpart, v)
+
+    p_osc = abs(amp_osc[0])**2
     return p_osc
 
   def TrueE(self, x, par):
@@ -133,7 +169,6 @@ class Generate:
 
       pois.Delete()
     return recoE_data
-
 
 class Experiment:
   def __init__(self, mc, data):
@@ -187,10 +222,11 @@ class FitVar:
     return self.osc_key
 
 class FitConstrainedVar(FitVar):
-  def __init__(self, key, osc_key, fcn, invfcn, lowlimit, highlimit):
+  def __init__(self, key, osc_key, fcn, invfcn, lowlimit, highlimit, strong=True):
     FitVar.__init__(self, key, osc_key, fcn, invfcn)
     self.lo = lowlimit
     self.hi = highlimit
+    self.constraint = strong
 
   def Penalty(self, value):
     if(value >= self.lo and value <= self.hi): return 0.
@@ -203,7 +239,11 @@ class FitConstrainedVar(FitVar):
 
   def SetValue(self, *args):
     param = {}
-    param[self.osc_key] = self.invfcn(self.Clamp(*args))
+    if self.constraint:
+        param[self.osc_key] = self.invfcn(self.Clamp(*args))
+    else:
+        param[self.osc_key] = self.invfcn(*args)
+
     return param
 
 
@@ -219,18 +259,18 @@ def FitDcpInPi(dcp):
 kFitDcpInPi = FitVar('dcp', 'dcp', FitDcpInPi, lambda x: x*pi)
 
 kFitSinSqTheta23 = FitConstrainedVar('ssth23','theta23', lambda x: sin(x)**2,
-                                      lambda x: asin(sqrt(x)), 0, 1)
+                                      lambda x: asin(sqrt(x)), 0.3, 0.7, False)
 
 # For numu disappearance, not relevant right now
 kFitSinSq2Theta23 = FitConstrainedVar('ssth23', 'theta23', lambda x: sin(2*x)**2,
-                                      lambda x: asin(sqrt(x))/2., 0, 1)
+                                      lambda x: asin(sqrt(x))/2., 0., 1.)
 
 kFitDmsq32 = FitConstrainedVar('dmsq_32', 'dmsq_32', lambda x: x*1000.,
                                 lambda x: x/1000., -4, 4)
 kFitDmsq32NH = FitConstrainedVar('dmsq_32', 'dmsq_32', lambda x: x*1000.,
-                                lambda x: x/1000., 2.3, 2.8)
+                                lambda x: x/1000., 0., 4.)
 kFitDmsq32IH = FitConstrainedVar('dmsq_32', 'dmsq_32', lambda x: x*1000.,
-                                lambda x: x/1000., -2.8, -2.3)
+                                lambda x: x/1000., -4, 0.)
 
 class Fitter():
   def __init__(self, fitvars, systs):
@@ -335,23 +375,53 @@ nuis_data['xsec_sigma'] = 0.
 nuis_data['flux_sigma'] = 0.
 
 osc_mc = {}
-osc_mc['theta23'] = 0.15*pi
-osc_mc['dmsq_32'] = 2.75e-3
-osc_mc['dcp'] = 0.1*pi
+osc_mc['theta23'] = 0.25*pi
+osc_mc['dmsq_32'] = -2.44e-3
+osc_mc['dcp'] = 0.5*pi
 nuis_mc = {}
-nuis_mc['xsec_sigma'] = 1.
-nuis_mc['flux_sigma'] = 1.
+nuis_mc['xsec_sigma'] = 0.
+nuis_mc['flux_sigma'] = 0.
 
-osc_seed = osc_mc.copy()
-nuis_seed = nuis_mc.copy()
-fitter = Fitter([kFitDcpInPi, kFitSinSqTheta23, kFitDmsq32],['xsec_sigma', 'flux_sigma'])
-#  fitter = Fitter([kFitDcpInPi, kFitSinSqTheta23],['xsec_sigma', 'flux_sigma'])
-fitter.InitMinuit()
 model = Generate()
-for i in range(10000):
-  nuis_data['xsec_sigma'] = np.random.rand(1)[0]
-  mock_data = model.Data(osc_data, nuis_data, True)
-  print osc_seed['dcp']
-  print fitter.Fit(mock_data, osc_seed, nuis_seed)
-  print osc_seed['dcp']
-  mock_data.Delete()
+
+#  osc_seed = osc_mc.copy()
+#  nuis_seed = nuis_mc.copy()
+#  #  fitter = Fitter([kFitSinSqTheta23, kFitDmsq32IH], [])
+#  #  #  fitter = Fitter([kFitDcpInPi, kFitSinSqTheta23],['xsec_sigma', 'flux_sigma'])
+#  #  fitter.InitMinuit()
+#  model = Generate()
+#  mock_data = model.Data(osc_data, nuis_data, True)
+#  print "---------"
+#  mock_mc = model.MC(osc_seed, nuis_seed)
+#  osc_seed['theta23']=0.5*pi
+#  mock_mc2 = model.MC(osc_seed, nuis_seed)
+#  print mock_data.Integral(), mock_mc.Integral(), mock_mc2.Integral()
+#  print Experiment(mock_mc, mock_data).Likelihood(), Experiment(mock_mc2, mock_data).Likelihood()
+#  #  mock_ratio.Divide(mock_mc)
+#  c = TCanvas()
+#  mock_data.Draw("hist")
+#  mock_mc.SetLineColor(kRed)
+#  mock_mc2.SetLineColor(kGreen+2)
+#  mock_mc.Draw("hist same")
+#  mock_mc2.Draw("hist same")
+#  c.Print("test.pdf")
+#  #  x_data = array('d')
+#  #  y_data = array('d')
+#  #  for i in range(50):
+#  #    osc_seed = osc_mc.copy()
+#  #    nuis_seed = nuis_mc.copy()
+#  #    osc_seed['dcp'] = i*pi/25.
+#  #    #  print osc_seed
+#  #    mock_mc = model.MC(osc_seed, nuis_seed)
+#  #    ll = fitter.Fit(mock_data, osc_seed, nuis_seed)
+#  #    #  print nuis_seed
+#  #    #  print osc_seed['dcp']/pi, ll
+#  #    #  print Experiment(mock_mc, mock_data).Likelihood()
+#  #    x_data.append(i/25.)
+#  #    y_data.append(ll)
+#  #    #  mock_mc.Delete()
+#  #
+#  #  c1 = TCanvas()
+#  #  gr = TGraph(len(x_data), x_data, y_data)
+#  #  gr.Draw()
+#  #  c1.Print("test.pdf")
