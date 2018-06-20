@@ -376,52 +376,46 @@ nuis_data['flux_sigma'] = 0.
 
 osc_mc = {}
 osc_mc['theta23'] = 0.25*pi
-osc_mc['dmsq_32'] = -2.44e-3
-osc_mc['dcp'] = 0.5*pi
+osc_mc['dmsq_32'] = -3.0e-3
+osc_mc['dcp'] = 0.
 nuis_mc = {}
 nuis_mc['xsec_sigma'] = 0.
 nuis_mc['flux_sigma'] = 0.
 
 model = Generate()
+fitter_2d = Fitter([kFitDmsq32IH], ['xsec_sigma', 'flux_sigma'])
+fitter_2d.InitMinuit()
 
-#  osc_seed = osc_mc.copy()
-#  nuis_seed = nuis_mc.copy()
-#  #  fitter = Fitter([kFitSinSqTheta23, kFitDmsq32IH], [])
-#  #  #  fitter = Fitter([kFitDcpInPi, kFitSinSqTheta23],['xsec_sigma', 'flux_sigma'])
-#  #  fitter.InitMinuit()
-#  model = Generate()
-#  mock_data = model.Data(osc_data, nuis_data, True)
-#  print "---------"
-#  mock_mc = model.MC(osc_seed, nuis_seed)
-#  osc_seed['theta23']=0.5*pi
-#  mock_mc2 = model.MC(osc_seed, nuis_seed)
-#  print mock_data.Integral(), mock_mc.Integral(), mock_mc2.Integral()
-#  print Experiment(mock_mc, mock_data).Likelihood(), Experiment(mock_mc2, mock_data).Likelihood()
-#  #  mock_ratio.Divide(mock_mc)
-#  c = TCanvas()
-#  mock_data.Draw("hist")
-#  mock_mc.SetLineColor(kRed)
-#  mock_mc2.SetLineColor(kGreen+2)
-#  mock_mc.Draw("hist same")
-#  mock_mc2.Draw("hist same")
-#  c.Print("test.pdf")
-#  #  x_data = array('d')
-#  #  y_data = array('d')
-#  #  for i in range(50):
-#  #    osc_seed = osc_mc.copy()
-#  #    nuis_seed = nuis_mc.copy()
-#  #    osc_seed['dcp'] = i*pi/25.
-#  #    #  print osc_seed
-#  #    mock_mc = model.MC(osc_seed, nuis_seed)
-#  #    ll = fitter.Fit(mock_data, osc_seed, nuis_seed)
-#  #    #  print nuis_seed
-#  #    #  print osc_seed['dcp']/pi, ll
-#  #    #  print Experiment(mock_mc, mock_data).Likelihood()
-#  #    x_data.append(i/25.)
-#  #    y_data.append(ll)
-#  #    #  mock_mc.Delete()
-#  #
-#  #  c1 = TCanvas()
-#  #  gr = TGraph(len(x_data), x_data, y_data)
-#  #  gr.Draw()
-#  #  c1.Print("test.pdf")
+ll_arr = array('d')
+#run only few steps for testing
+ssth23_arr = np.arange(0.3, 0.75, 0.05)
+dcp_arr = np.arange(0., 2.4, 0.2)
+mock_data = model.Data(osc_data, nuis_data, True)
+contour = TH2D("contour", "IH", len(dcp_arr), dcp_arr[0]-0.1, dcp_arr[len(dcp_arr)-1]-0.1, 
+                                len(ssth23_arr), ssth23_arr[0]-0.025, ssth23_arr[len(ssth23_arr)-1]-0.025)
+for biny in range(len(ssth23_arr)):
+    for binx in range(len(dcp_arr)):
+        osc_ih = osc_mc.copy()
+        nuis_ih = nuis_mc.copy()
+        ssth23 = ssth23_arr[biny]
+        dcp = dcp_arr[binx]
+
+        osc_ih['theta23'] = asin(sqrt(ssth23))
+        osc_ih['dcp'] = dcp*pi
+        ll = fitter_2d.Fit(mock_data, osc_ih, nuis_ih)
+        contour.SetBinContent(binx+1, biny+1, ll)
+
+# chi2 significances for 1-sigma, 2-sigma, 3-sigma for 2 dof
+levels = array('d', [0, 2.3, 6.18, 11.83])
+# choose palette such that large values get lighter colours
+gStyle.SetPalette(kDarkBodyRadiator)
+canvas = TCanvas()
+contour.SetContour(4, levels)
+contour.Draw("colz")
+canvas.Print("contour_ih_test.pdf")
+
+#saving to a root file for modifications if needed
+fileout=TFile("contour_test.root", "recreate")
+fileout.cd()
+contour.Write()
+fileout.Close()
