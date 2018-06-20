@@ -259,7 +259,7 @@ def FitDcpInPi(dcp):
 kFitDcpInPi = FitVar('dcp', 'dcp', FitDcpInPi, lambda x: x*pi)
 
 kFitSinSqTheta23 = FitConstrainedVar('ssth23','theta23', lambda x: sin(x)**2,
-                                      lambda x: asin(sqrt(x)), 0.3, 0.7, False)
+                                      lambda x: asin(min(sqrt(max(0, x)), 1)), 0.3, 0.7, False)
 
 # For numu disappearance, not relevant right now
 kFitSinSq2Theta23 = FitConstrainedVar('ssth23', 'theta23', lambda x: sin(2*x)**2,
