@@ -1,5 +1,6 @@
 import numpy as np
 
+
 def pos_to_param(i, j):
     """
     Map grid position to parameter space 
