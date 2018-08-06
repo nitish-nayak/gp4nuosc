@@ -33,6 +33,7 @@ osc_data['dmsq_32'] = 0.
 nuis_data = {}
 nuis_data['xsec_sigma'] = 0.
 nuis_data['flux_sigma'] = 0.
+print(osc_data)
 
 # seed values for fitting
 osc_seed = {}
@@ -43,15 +44,15 @@ nuis_seed = {}
 nuis_seed['xsec_sigma'] = 0.
 nuis_seed['flux_sigma'] = 0.
 
-fitter_global = Fitter([kFitSinSqTheta23, kFitDcpInPi, kFitDmsq32IH],['xsec_sigma', 'flux_sigma'])
+fitter_global = Fitter([kFitSinSqTheta23, kFitDcpInPi, kFitDmsq32NH],['xsec_sigma', 'flux_sigma'])
 fitter_global.InitMinuit()
 
-fitter_profile = Fitter([kFitDmsq32IH],['xsec_sigma', 'flux_sigma'])
+fitter_profile = Fitter([kFitDmsq32NH],['xsec_sigma', 'flux_sigma'])
 fitter_profile.InitMinuit()
 
 model = Generate()
 
-for i in range(1000):
+for i in range(500):
   # sample dmsq_32 from entire allowed range (both normal and inverted hierarchies)
   if random.random() < 0.5:
     current_dmsq_32 = (-random.random() * 4.0) * 1e-3
@@ -72,7 +73,7 @@ for i in range(1000):
     profile_fit = fitter_profile.Fit(mock_data, osc_seed, nuis_seed)
     profile_results = str(osc_seed) + ' ' + str(nuis_seed) # extract profile fitted values
     # write output to a text file
-    with open('contour_inverted_{}.txt'.format(run), 'a') as myfile:
+    with open('contour_normal_{}.txt'.format(run), 'a') as myfile:
       myfile.write(global_results + ', ' + profile_results + ', ' + '{l1}, {l2}\n'.format(l1=global_fit, l2=profile_fit))
   except:
     print('Warning: fitter does not work properly!')
