@@ -4,6 +4,8 @@ from math import *
 import numpy as np
 from scipy.linalg import eigh
 
+#################################### Neutrino oscillation probability ####################################
+
 class Generate:
   def __init__(self):
      
@@ -170,6 +172,8 @@ class Generate:
       pois.Delete()
     return recoE_data
 
+#################################### Poisson model likelihood ####################################
+
 class Experiment:
   def __init__(self, mc, data):
     self.mc = mc.Clone()
@@ -196,6 +200,8 @@ class Experiment:
   def __del__(self):
     self.mc.Delete()
     self.data.Delete()
+
+#################################### Minuit parameter optimization ####################################
 
 class FitVar:
   def __init__(self, key, osc_key, fcn, invfcn):
@@ -255,22 +261,6 @@ def FitDcpInPi(dcp):
   while ret > 2.: ret -= 2
 
   return ret
-
-kFitDcpInPi = FitVar('dcp', 'dcp', FitDcpInPi, lambda x: x*pi)
-
-kFitSinSqTheta23 = FitConstrainedVar('ssth23','theta23', lambda x: sin(x)**2,
-                                      lambda x: asin(min(sqrt(max(0, x)), 1)), 0.3, 0.7, False)
-
-# For numu disappearance, not relevant right now
-kFitSinSq2Theta23 = FitConstrainedVar('ssth23', 'theta23', lambda x: sin(2*x)**2,
-                                      lambda x: asin(sqrt(x))/2., 0., 1.)
-
-kFitDmsq32 = FitConstrainedVar('dmsq_32', 'dmsq_32', lambda x: x*1000.,
-                                lambda x: x/1000., -4, 4)
-kFitDmsq32NH = FitConstrainedVar('dmsq_32', 'dmsq_32', lambda x: x*1000.,
-                                lambda x: x/1000., 0., 4.)
-kFitDmsq32IH = FitConstrainedVar('dmsq_32', 'dmsq_32', lambda x: x*1000.,
-                                lambda x: x/1000., -4, 0.)
 
 class Fitter():
   def __init__(self, fitvars, systs):
@@ -365,57 +355,3 @@ class Fitter():
     print ", LL = ", chi
 
     return chi
-
-osc_data = {}
-osc_data['theta23'] = 0.25*pi
-osc_data['dmsq_32'] = 2.44e-3
-osc_data['dcp'] = 1.5*pi
-nuis_data = {}
-nuis_data['xsec_sigma'] = 0.
-nuis_data['flux_sigma'] = 0.
-
-osc_mc = {}
-osc_mc['theta23'] = 0.25*pi
-osc_mc['dmsq_32'] = -3.0e-3
-osc_mc['dcp'] = 0.
-nuis_mc = {}
-nuis_mc['xsec_sigma'] = 0.
-nuis_mc['flux_sigma'] = 0.
-
-model = Generate()
-fitter_2d = Fitter([kFitDmsq32IH], ['xsec_sigma', 'flux_sigma'])
-fitter_2d.InitMinuit()
-
-ll_arr = array('d')
-#run only few steps for testing
-ssth23_arr = np.arange(0.3, 0.75, 0.05)
-dcp_arr = np.arange(0., 2.4, 0.2)
-mock_data = model.Data(osc_data, nuis_data, True)
-contour = TH2D("contour", "IH", len(dcp_arr), dcp_arr[0]-0.1, dcp_arr[len(dcp_arr)-1]-0.1, 
-                                len(ssth23_arr), ssth23_arr[0]-0.025, ssth23_arr[len(ssth23_arr)-1]-0.025)
-for biny in range(len(ssth23_arr)):
-    for binx in range(len(dcp_arr)):
-        osc_ih = osc_mc.copy()
-        nuis_ih = nuis_mc.copy()
-        ssth23 = ssth23_arr[biny]
-        dcp = dcp_arr[binx]
-
-        osc_ih['theta23'] = asin(sqrt(ssth23))
-        osc_ih['dcp'] = dcp*pi
-        ll = fitter_2d.Fit(mock_data, osc_ih, nuis_ih)
-        contour.SetBinContent(binx+1, biny+1, ll)
-
-# chi2 significances for 1-sigma, 2-sigma, 3-sigma for 2 dof
-levels = array('d', [0, 2.3, 6.18, 11.83])
-# choose palette such that large values get lighter colours
-gStyle.SetPalette(kDarkBodyRadiator)
-canvas = TCanvas()
-contour.SetContour(4, levels)
-contour.Draw("colz")
-canvas.Print("contour_ih_test.pdf")
-
-#saving to a root file for modifications if needed
-fileout=TFile("contour_test.root", "recreate")
-fileout.cd()
-contour.Write()
-fileout.Close()
