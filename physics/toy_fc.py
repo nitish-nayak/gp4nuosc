@@ -1,68 +1,60 @@
+"""
+Script for simulating reference distribution at a point on the parameter grid.
+
+The three user inputs include grid position index,
+normal or inverted hierarchy,
+and output directory.
+
+Grid position index ranges from 1 to the total number of points
+and the output will be single file contour_index.txt.
+"""
+
 from ROOT import *
-from math import *
 import random
 import sys
-from toy import FitVar, FitDcpInPi, FitConstrainedVar, Fitter, Generate
+import os
+from toy_helper import *
+from toy_experiment import Generate
 
-kFitDcpInPi = FitVar('dcp', 'dcp', FitDcpInPi, lambda x: x*pi)
+index = int(sys.argv[1]) - 1  # grid position index
+hierarchy = sys.argv[2]
+output_dir = sys.argv[3]
 
-kFitSinSqTheta23 = FitConstrainedVar('ssth23','theta23', lambda x: sin(x)**2,
-                                     lambda x: asin(min(sqrt(max(0, x)), 1)), 0.3, 0.7, False)
+GRID_SIZE = 20
+N_MC = 500
 
-kFitDmsq32NH = FitConstrainedVar('dmsq_32', 'dmsq_32', lambda x: x*1000.,
-                                 lambda x: x/1000., 0., 4.)
-
-kFitDmsq32IH = FitConstrainedVar('dmsq_32', 'dmsq_32', lambda x: x*1000.,
-                                 lambda x: x/1000., -4, 0.)
-
-run = int(sys.argv[1]) - 1 # from 0 to 399
-grid_size = 20
-j = run / grid_size
-k = run % grid_size
-
-current_sin2theta23 = j * 1.0 / (grid_size + 1.0) + 1.0 / (grid_size + 1.0) # sin2theta23 ranges from 0 to 1
-current_theta23 = asin(sqrt(current_sin2theta23))
-current_dcp = k * 2.0 * pi / (grid_size + 1.0) + 2.0 * pi / (grid_size + 1.0) # dcp ranges from 0 to 2 pi
+# figure out current parameter values
+current_theta23, current_dcp = current_params(index, GRID_SIZE)
 
 # current values for mock data
-osc_data = {}
-osc_data['theta23'] = current_theta23
-osc_data['dcp'] = current_dcp
-osc_data['dmsq_32'] = 0.
-nuis_data = {}
-nuis_data['xsec_sigma'] = 0.
-nuis_data['flux_sigma'] = 0.
-print(osc_data)
+osc_data = {'theta23': current_theta23, 'dcp': current_dcp, 'dmsq_32': 0.}
+nuis_data = {'xsec_sigma': 0., 'flux_sigma': 0.}
 
 # seed values for fitting
-osc_seed = {}
-osc_seed['theta23'] = current_theta23
-osc_seed['dcp'] = current_dcp
-osc_seed['dmsq_32'] = 0.
-nuis_seed = {}
-nuis_seed['xsec_sigma'] = 0.
-nuis_seed['flux_sigma'] = 0.
-
-fitter_global = Fitter([kFitSinSqTheta23, kFitDcpInPi, kFitDmsq32NH],['xsec_sigma', 'flux_sigma'])
-fitter_global.InitMinuit()
-
-fitter_profile = Fitter([kFitDmsq32NH],['xsec_sigma', 'flux_sigma'])
-fitter_profile.InitMinuit()
+osc_seed = {'theta23': current_theta23, 'dcp': current_dcp, 'dmsq_32': 0.}
+nuis_seed = {'xsec_sigma': 0., 'flux_sigma': 0.}
 
 model = Generate()
 
-for i in range(500):
-    # sample dmsq_32 from entire allowed range (both normal and inverted hierarchies)
+# initiate fitters
+fitter_global, fitter_profile = initiate_fitters(hierarchy)
+
+for i in range(N_MC):
+    # sample from entire allowed range (both normal and inverted hierarchies)
     if random.random() < 0.5:
         current_dmsq_32 = (-random.random() * 4.0) * 1e-3
     else:
         current_dmsq_32 = (random.random() * 4.0) * 1e-3
+
     osc_data['dmsq_32'] = current_dmsq_32
     osc_seed['dmsq_32'] = current_dmsq_32
-    mock_data = model.Data(osc_data, nuis_data) # generate mock data
+
+    mock_data = model.Data(osc_data, nuis_data)  # throw pseudo experiment
+
     try:
         global_fit = fitter_global.Fit(mock_data, osc_seed, nuis_seed)
-        global_results = str(osc_seed) + ' ' + str(nuis_seed) # extract global fitted values
+        global_results = str(osc_seed) + ' ' + str(nuis_seed)  # extract global fitted values
+
         # reset seed values
         osc_seed['theta23'] = current_theta23
         osc_seed['dcp'] = current_dcp
@@ -70,10 +62,15 @@ for i in range(500):
         nuis_seed['xsec_sigma'] = 0.
         nuis_seed['flux_sigma'] = 0.
         profile_fit = fitter_profile.Fit(mock_data, osc_seed, nuis_seed)
-        profile_results = str(osc_seed) + ' ' + str(nuis_seed) # extract profile fitted values
+        profile_results = str(osc_seed) + ' ' + str(nuis_seed)  # extract profile fitted values
+
         # write output to a text file
-        with open('contour_normal_{}.txt'.format(run), 'a') as myfile:
-            myfile.write(global_results + ', ' + profile_results + ', ' + '{l1}, {l2}\n'.format(l1=global_fit, l2=profile_fit))
+        path = os.path.join(output_dir, 'contour_{}.txt'.format(index))
+        with open(path, 'a') as f:
+            f.write(global_results + ', ' + profile_results + ', ' +
+                    '{l1}, {l2}\n'.format(l1=global_fit, l2=profile_fit))
+
     except:
         print('Warning: fitter does not work properly!')
+
     mock_data.Delete()
