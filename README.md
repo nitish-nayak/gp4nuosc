@@ -7,14 +7,14 @@ Approximating Feldman-Cousins Confidence Intervals using a Gaussian Process for 
 A Toy Experiment modelled on NOvA is mocked up. An input flux of muon neutrinos is oscillated into electron neutrinos using the full 3-flavor PMNS formulation with the MSW effect. A toy cross-section is then used to get the final estimate of oscillated electron neutrinos. A mock data histogram is calculated by a Poisson variation of the prediction for given input PMNS parameters and is fit to various predictions. The oscillation parameters are then estimated by maximising the corresponding likelihood. The toy analysis uses 8 bins from 0.5-4.5 GeV of neutrino energies and no background is assumed. 
 * Implemented in _physics/toy_experiment.py_
 
-[Toy Experiment](https://raw.githubusercontent.com/nitish-nayak/ToyNuOscCI/master/pred_vs_data.png)
+![Toy Experiment](https://raw.githubusercontent.com/nitish-nayak/ToyNuOscCI/master/pred_vs_data.png)
 
 ## Feldman Cousins
 
 Contours/Slices of the likelihood ratio test (LRT) thresholds are made using the Feldman-Cousins method. 
 * Implemented in _physics/fc.py, physics/fc_helper.py_
 
-[Threshold Slice](https://raw.githubusercontent.com/nitish-nayak/ToyNuOscCI/master/threshold.png)
+![Threshold Slice](https://raw.githubusercontent.com/nitish-nayak/ToyNuOscCI/master/threshold.png)
 
 ## Approximation
 
