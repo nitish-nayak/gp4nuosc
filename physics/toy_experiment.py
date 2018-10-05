@@ -411,4 +411,4 @@ leg.AddEntry(mc2, "Prediction (IH, sin^{2}#theta_{23}= 0.5, #delta_{CP}= #pi/2)"
 leg.SetBorderSize(0)
 leg.Draw()
 
-c.Print("pred_vs_data.pdf")
+c.Print("../pred_vs_data.png")

@@ -13,7 +13,7 @@ from ROOT import *
 import random
 import sys
 import os
-from toy_helper import *
+from fc_helper import *
 from toy_experiment import Generate
 
 index = int(sys.argv[1]) - 1  # grid position index
