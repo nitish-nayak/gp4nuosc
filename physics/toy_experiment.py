@@ -367,48 +367,48 @@ class Fitter():
 
     return chi
 
-osc_data = {}
-osc_data['theta23'] = 0.25*pi
-osc_data['dmsq_32'] = 2.44e-3
-osc_data['dcp'] = 1.5*pi
-nuis_data = {}
-nuis_data['xsec_sigma'] = 0.
-nuis_data['flux_sigma'] = 0.
-nuis_data['res_sigma'] = 2.
-
-osc_mc = {}
-osc_mc['theta23'] = 0.25*pi
-osc_mc['dmsq_32'] = -2.44e-3
-osc_mc['dcp'] = 0.5*pi
-nuis_mc = {}
-nuis_mc['xsec_sigma'] = 0.
-nuis_mc['flux_sigma'] = 0.
-
-model = Generate()
-gROOT.SetBatch(True)
-gStyle.SetOptStat(0)
-
-c = TCanvas()
-
-data = model.Data(osc_data, nuis_data)
-data.SetLineColor(kBlack)
-mc1 = model.MCCurve(osc_data, nuis_data)
-mc1.SetLineColor(kBlue)
-mc2 = model.MCCurve(osc_mc, nuis_mc)
-mc2.SetLineColor(kRed)
-data.Draw("ep same")
-mc1.Draw("same")
-mc2.Draw("same")
-data.GetYaxis().SetRangeUser(0, 1.5*data.GetMaximum())
-data.GetXaxis().SetTitle("Neutrino Energy")
-data.GetYaxis().SetTitle("Number of Events")
-data.SetTitle("")
-
-leg = TLegend(0.45, 0.6, 0.85, 0.85)
-leg.AddEntry(data, "Mock Observation", "le")
-leg.AddEntry(mc1, "Prediction (NH, sin^{2}#theta_{23}= 0.5, #delta_{CP}= 3#pi/2)", "l")
-leg.AddEntry(mc2, "Prediction (IH, sin^{2}#theta_{23}= 0.5, #delta_{CP}= #pi/2)", "l")
-leg.SetBorderSize(0)
-leg.Draw()
-
-c.Print("../pred_vs_data.png")
+#  osc_data = {}
+#  osc_data['theta23'] = 0.25*pi
+#  osc_data['dmsq_32'] = 2.44e-3
+#  osc_data['dcp'] = 1.5*pi
+#  nuis_data = {}
+#  nuis_data['xsec_sigma'] = 0.
+#  nuis_data['flux_sigma'] = 0.
+#  nuis_data['res_sigma'] = 2.
+#
+#  osc_mc = {}
+#  osc_mc['theta23'] = 0.25*pi
+#  osc_mc['dmsq_32'] = -2.44e-3
+#  osc_mc['dcp'] = 0.5*pi
+#  nuis_mc = {}
+#  nuis_mc['xsec_sigma'] = 0.
+#  nuis_mc['flux_sigma'] = 0.
+#
+#  model = Generate()
+#  gROOT.SetBatch(True)
+#  gStyle.SetOptStat(0)
+#
+#  c = TCanvas()
+#
+#  data = model.Data(osc_data, nuis_data)
+#  data.SetLineColor(kBlack)
+#  mc1 = model.MCCurve(osc_data, nuis_data)
+#  mc1.SetLineColor(kBlue)
+#  mc2 = model.MCCurve(osc_mc, nuis_mc)
+#  mc2.SetLineColor(kRed)
+#  data.Draw("ep same")
+#  mc1.Draw("same")
+#  mc2.Draw("same")
+#  data.GetYaxis().SetRangeUser(0, 1.5*data.GetMaximum())
+#  data.GetXaxis().SetTitle("Neutrino Energy")
+#  data.GetYaxis().SetTitle("Number of Events")
+#  data.SetTitle("")
+#
+#  leg = TLegend(0.45, 0.6, 0.85, 0.85)
+#  leg.AddEntry(data, "Mock Observation", "le")
+#  leg.AddEntry(mc1, "Prediction (NH, sin^{2}#theta_{23}= 0.5, #delta_{CP}= 3#pi/2)", "l")
+#  leg.AddEntry(mc2, "Prediction (IH, sin^{2}#theta_{23}= 0.5, #delta_{CP}= #pi/2)", "l")
+#  leg.SetBorderSize(0)
+#  leg.Draw()
+#
+#  c.Print("../pred_vs_data.png")
