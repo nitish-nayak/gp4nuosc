@@ -4,9 +4,10 @@
 BASEDIR=$1
 FCBASEDIR=`dirname "$0"`"/.."
 
-slice_size=40
-slice_types=("dcp_NHUO" "dcp_NHLO" "dcp_NH" "dcp_IHUO" "dcp_IHLO" "dcp_IH" "dmsq_32_NHUO" "dmsq_32_NHLO" "dmsq_32_NH" "dmsq_32_IHUO" "dmsq_32_IHLO" "dmsq_32_IH" "theta23_NH" "theta23_IH")
-vars=("dcp" "theta23" "dmsq_32")
+slice_size=1600
+# slice_types=("dcp__theta23_IH" "dcp__theta23_NH" "theta23__dmsq_32_NH" "theta23__dmsq_32_IH")
+slice_types=("dcp__theta23_NH")
+vars=("dcp__theta23" "theta23__dmsq_32")
 
 FCFILE='fc.py'
 
@@ -41,7 +42,7 @@ for stype in "${slice_types[@]}"; do
   jobsub_cmd=$jobsub_cmd" --outdir "$OUTDIR
   jobsub_cmd=$jobsub_cmd" --njobs "$slice_size
   # jobsub_cmd=$jobsub_cmd" --append_condor_requirements='(((TARGET.GLIDEIN_ToDie-CurrentTime)>86400s)||isUndefined(TARGET.GLIDEIN_ToDie))'"
-
+  
   eval $jobsub_cmd
   echo "-------------"
 done

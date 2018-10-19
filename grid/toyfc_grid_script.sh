@@ -12,7 +12,7 @@ copy_log()
 
     target="$OUTDIR/${JOBSUBJOBID}.${infix}log.txt"
     echo Copy log to $target
-    ifdh cp $PWD/log.txt $target
+    ifdh cp ../log.txt $target
 }
 
 # Make sure we always attempt to copy the logs
@@ -72,9 +72,7 @@ SUFFIX=${COUNT}_of_${NJOBS}
 echo "Setting up environment.."
 setup_pyroot
 
-PWD=`pwd`
-echo "Current directory: $PWD"
-TEMPOUT=$PWD"/output/"
+TEMPOUT=`pwd`"/output/"
 mkdir -p $TEMPOUT
 cd $TEMPOUT
 
@@ -136,14 +134,14 @@ do
     if [ $NJOBS -gt 1 ]
     then
     # Insert the suffix after the last dot
-	DEST=`echo $k | sed "s/\(.*\)\.\(.*\)/\1.${SUFFIX}.\2/"`
-	if [ $DEST = $k ]
-	then
+        DEST=`echo $k | sed "s/\(.*\)\.\(.*\)/\1.${SUFFIX}.\2/"`
+        if [ $DEST = $k ]
+        then
           # $k had no dots in it?
           DEST=${k}.$SUFFIX
-	fi
+        fi
     else
-	DEST=$k
+        DEST=$k
     fi
     CMD="ifdh cp $k $OUTDIR/$DEST"
     echo $CMD
