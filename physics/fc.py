@@ -35,11 +35,15 @@ current_params = get_params(index, GRID_SIZE, contour_vars)
 # current values for mock data
 osc_data = {'theta23': 0., 'dcp': 0., 'dmsq_32': 0.}
 osc_data.update(current_params)
+if "IH" in fc_type:
+  osc_data['dmsq_32'] = -osc_data['dmsq_32']
 nuis_data = {'xsec_sigma': 0., 'flux_sigma': 0.}
 
 # seed values for fitting
 osc_seed = {'theta23': 0., 'dcp': 0., 'dmsq_32': 0.}
 osc_seed.update(current_params)
+if "IH" in fc_type:
+  osc_seed['dmsq_32'] = -osc_seed['dmsq_32']
 nuis_seed = {'xsec_sigma': 0., 'flux_sigma': 0.}
 
 model = Generate()
@@ -55,13 +59,13 @@ for i in range(N_MC):
     for var in profile_vars:
         if var == 'dmsq_32':
             if random.random() < 0.5:
-                profile_params['dmsq_32'] = (-random.random() * 4.0) * 1e-3
+                profile_params['dmsq_32'] = -3.e-3 + (random.random() * 1.0) * 1e-3
             else:
-                profile_params['dmsq_32'] = (random.random() * 4.0) * 1e-3
+                profile_params['dmsq_32'] = 2.e-3 + (random.random() * 1.0) * 1e-3
         if var == 'dcp':
             profile_params['dcp'] = random.random() * 2.0 * pi
         if var == 'theta23':
-            profile_params['theta23'] = asin(sqrt(random.random()))
+            profile_params['theta23'] = asin(sqrt(0.3 + 0.4*random.random()))
 
     osc_data.update(profile_params)
     osc_seed.update(profile_params)
@@ -72,11 +76,12 @@ for i in range(N_MC):
     try:
         global_fit = fitter_global.Fit(mock_data, osc_seed, nuis_seed)
         global_results = str(osc_seed) + ' ' + str(nuis_seed)  # extract global fitted values
-
+        
         # reset seed values
-        osc_seed = current_params
+        osc_seed = current_params.copy()
         nuis_seed['xsec_sigma'] = 0.
         nuis_seed['flux_sigma'] = 0.
+        
         profile_fit = fitter_profile.Fit(mock_data, osc_seed, nuis_seed)
         profile_results = str(osc_seed) + ' ' + str(nuis_seed)  # extract profile fitted values
 

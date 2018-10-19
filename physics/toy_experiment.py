@@ -170,7 +170,6 @@ class Generate:
       pois = TRandom3()
       pois.SetSeed(0)
       samples = pois.Poisson(self.trueE.Integral(0.1,5))
-
       recoE_data = TH1D(hname, hname, nbins, 0.5, 4.5)
       for i in xrange(samples+10000):
         trueE_i = self.trueE.GetRandom()

@@ -14,7 +14,7 @@ def current_params(i, size, key):
     """
    
     if key == 'theta23':
-      current_sin2theta23 = i * 1.0 / (size + 1.0) + 1.0 / (size + 1.0)  # sin2theta23 ranges from 0 to 1
+      current_sin2theta23 = i * 0.4 / (size + 1.0) + 0.3 + 0.4 / (size + 1.0)  # sin2theta23 ranges from 0 to 1
       current_theta23 = asin(sqrt(current_sin2theta23))
       return current_theta23
 
@@ -23,7 +23,7 @@ def current_params(i, size, key):
       return current_dcp
 
     if key == 'dmsq_32':
-      current_dmsq32 = i * 4.e-3/ ( size + 1.0) + 4.e-3/ (size + 1.0)
+      current_dmsq32 = i * 1.e-3/ ( size + 1.0) + 2.e-3 + 1.e-3/ (size + 1.0)
       return current_dmsq32
 
     return sys.exit("Invalid Key. Please provide the right parameter key")
@@ -60,13 +60,10 @@ def initiate_fitters(fc_type, contour_vars):
                                  lambda x: asin(min(sqrt(max(0, x)), 1)), 0.3, 0.5, False)
 
     kFitDmsq32NH = FitConstrainedVar('dmsq_32', 'dmsq_32', lambda x: x*1000.,
-                             lambda x: x/1000., 0., 4.)
+                             lambda x: x/1000., 2., 3.)
 
     kFitDmsq32IH = FitConstrainedVar('dmsq_32', 'dmsq_32', lambda x: x*1000.,
-                             lambda x: x/1000., -4., 0.)
-
-    kFitDmsq32 = FitConstrainedVar('dmsq_32', 'dmsq_32', lambda x: x*1000.,
-                             lambda x: x/1000., -4., 4.)
+                             lambda x: x/1000., -3., -2.)
 
     fitvars_global = []
     fitvars_profile = []
