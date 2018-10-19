@@ -27,20 +27,20 @@ for stype in "${slice_types[@]}"; do
   echo "-------------"
   echo "Submitting $slice_size jobs for $stype to $OUTDIR ..."
   echo "-------------"
-  jobsub_cmd="jobsub_submit" 
+  jobsub_cmd="jobsub_submit -G nova" 
   jobsub_cmd=$jobsub_cmd" -N "$slice_size 
   jobsub_cmd=$jobsub_cmd" -f "$FCBASEDIR"/physics/"$FCFILE" -f "$FCBASEDIR"/physics/fc_helper.py -f "$FCBASEDIR"/physics/toy_experiment.py" 
-  jobsub_cmd=$jobsub_cmd" --resource-provides=usage_model=DEDICATED,OPPORTUNISTIC"
-  jobsub_cmd=$jobsub_cmd" --disk=3500"
-  jobsub_cmd=$jobsub_cmd" --memory=3000"
-  jobsub_cmd=$jobsub_cmd" --expected-lifetime=0s"
-  jobsub_cmd=$jobsub_cmd" --append_condor_requirements='(((TARGET.GLIDEIN_ToDie-CurrentTime)>86400)||isUndefined(TARGET.GLIDEIN_ToDie))'"
   jobsub_cmd=$jobsub_cmd" file://"$FCBASEDIR"/grid/toyfc_grid_script.sh"
   jobsub_cmd=$jobsub_cmd" --fcfile "$FCFILE
   jobsub_cmd=$jobsub_cmd" --fctype "$fc_type
   jobsub_cmd=$jobsub_cmd" --ctype "$slice_var 
   jobsub_cmd=$jobsub_cmd" --outdir "$OUTDIR
   jobsub_cmd=$jobsub_cmd" --njobs "$slice_size
+  jobsub_cmd=$jobsub_cmd" --resource-provides=usage_model=DEDICATED,OPPORTUNISTIC"
+  jobsub_cmd=$jobsub_cmd" --disk=3500"
+  jobsub_cmd=$jobsub_cmd" --memory=3000"
+  jobsub_cmd=$jobsub_cmd" --expected-lifetime=0s"
+  jobsub_cmd=$jobsub_cmd" --append_condor_requirements='(((TARGET.GLIDEIN_ToDie-CurrentTime)>86400)||isUndefined(TARGET.GLIDEIN_ToDie))'"
   
   eval $jobsub_cmd
   echo "-------------"
