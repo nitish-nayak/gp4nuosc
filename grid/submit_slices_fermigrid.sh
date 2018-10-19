@@ -37,10 +37,10 @@ for stype in "${slice_types[@]}"; do
   jobsub_cmd=$jobsub_cmd" --outdir "$OUTDIR
   jobsub_cmd=$jobsub_cmd" --njobs "$slice_size
   jobsub_cmd=$jobsub_cmd" --resource-provides=usage_model=DEDICATED,OPPORTUNISTIC"
-  jobsub_cmd=$jobsub_cmd" --disk=3500"
-  jobsub_cmd=$jobsub_cmd" --memory=3000"
-  jobsub_cmd=$jobsub_cmd" --expected-lifetime=0s"
-  jobsub_cmd=$jobsub_cmd" --append_condor_requirements='(((TARGET.GLIDEIN_ToDie-CurrentTime)>86400)||isUndefined(TARGET.GLIDEIN_ToDie))'"
+  jobsub_cmd=$jobsub_cmd" --disk=2000"
+  jobsub_cmd=$jobsub_cmd" --memory=2000"
+  jobsub_cmd=$jobsub_cmd" --expected-lifetime=86400s"
+  # jobsub_cmd=$jobsub_cmd" --append_condor_requirements='(((TARGET.GLIDEIN_ToDie-CurrentTime)>86400s)||isUndefined(TARGET.GLIDEIN_ToDie))'"
   
   eval $jobsub_cmd
   echo "-------------"
