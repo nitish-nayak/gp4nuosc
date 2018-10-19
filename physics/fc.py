@@ -2,8 +2,10 @@
 Script for simulating reference distribution at a point on the parameter grid.
 
 The three user inputs include grid position index,
-normal or inverted hierarchy,
-and output directory.
+The profiled category : "NH", "IH", "NHUO", "IHLO" etc
+the variable being FC corrected : "dcp", "theta23" or "dmsq_32"
+can also pass 2 variables separated by a comma for contour corrections like : "dcp,theta23" etc
+and Output directory.
 
 Grid position index ranges from 1 to the total number of points
 and the output will be single file contour_index.txt.
@@ -22,11 +24,12 @@ fc_type = sys.argv[2]
 contour_varstrs = sys.argv[3]
 output_dir = sys.argv[4]
 
-GRID_SIZE = 40
-N_MC = 2000
+GRID_SIZE = 40 # sample GRID_SIZE points per variable
+N_MC = 2000 # number of pseudo experiments to throw per point in parameter space
 
+# get list of variables
 contour_vars = contour_varstrs.split(",")
-# figure out current parameter values
+# figure out current parameter values based on grid position
 current_params = get_params(index, GRID_SIZE, contour_vars)
 
 # current values for mock data
@@ -47,7 +50,7 @@ fitter_global, fitter_profile = initiate_fitters(fc_type, contour_vars)
 profile_vars = [k for k in osc_data.keys() if k not in contour_vars]
 
 for i in range(N_MC):
-    # sample from entire allowed range (both normal and inverted hierarchies)
+    # sample from entire allowed range
     profile_params = {}
     for var in profile_vars:
         if var == 'dmsq_32':

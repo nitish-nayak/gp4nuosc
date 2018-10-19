@@ -32,9 +32,9 @@ def get_params(index, grid_size, contour_vars):
     """
     Figure out current parameter values on the grid.
 
-    :param i: (int) between 0 and size - 1
-    :param grid_size: (int) the grid is size x size
-    :return: (float) values of theta23 and delta cp
+    :param i: (int) between 0 and grid_size^(contour_vars.size())- 1
+    :param grid_size: (int) the grid is contour_vars.size() dimensional with grid_size for each dimension 
+    :return: (float) current values for parameters asked for based on grid position
     """
     contour_indices = [(index / (grid_size**k)) % grid_size for k, v in enumerate(contour_vars)]
     contour_params = {}
@@ -84,7 +84,8 @@ def initiate_fitters(fc_type, contour_vars):
     if "NH" not in fc_type and "IH" not in fc_type:
         sys.exit("Please provide hierarchy, either NH or IH")
     fitvars_global.append(kFitDcpInPi)
-    
+   
+    # profiled variables are just those that aren't in contour_vars
     fitvars_profile = [fitvar for fitvar in fitvars_global if fitvar.OscKey() not in contour_vars]
     nuis_vars = ['xsec_sigma', 'flux_sigma']
 
