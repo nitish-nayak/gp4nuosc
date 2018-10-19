@@ -43,10 +43,6 @@ while [ $# -gt 0 ]
 do
     echo "args: \$1 '$1' \$2 '$2'"
     case $1 in
-        -h | --help )
-            usage
-            exit
-            ;;
         -m | --fcfile )
             FCFILE=$2
             shift 2
