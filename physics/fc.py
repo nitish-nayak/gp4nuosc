@@ -4,7 +4,7 @@ Script for simulating reference distribution at a point on the parameter grid.
 The three user inputs include grid position index,
 The profiled category : "NH", "IH", "NHUO", "IHLO" etc
 the variable being FC corrected : "dcp", "theta23" or "dmsq_32"
-can also pass 2 variables separated by a comma for contour corrections like : "dcp,theta23" etc
+can also pass 2 variables separated by __ for contour corrections like : "dcp__theta23" etc
 and Output directory.
 
 Grid position index ranges from 1 to the total number of points
@@ -28,7 +28,7 @@ GRID_SIZE = 40 # sample GRID_SIZE points per variable
 N_MC = 2000 # number of pseudo experiments to throw per point in parameter space
 
 # get list of variables
-contour_vars = contour_varstrs.split(",")
+contour_vars = contour_varstrs.split("__")
 # figure out current parameter values based on grid position
 current_params = get_params(index, GRID_SIZE, contour_vars)
 
