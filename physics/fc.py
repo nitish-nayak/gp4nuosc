@@ -74,7 +74,7 @@ for i in range(N_MC):
     mock_data = model.Data(osc_data, nuis_data)  # throw pseudo experiment
 
     try:
-        global_fit = fitter_global.Fit(mock_data, osc_seed, nuis_seed)
+        global_fit = fitter_global.Fit(mock_data, osc_seed, nuis_seed, True)
         global_results = str(osc_seed) + ' ' + str(nuis_seed)  # extract global fitted values
         
         # reset seed values
@@ -82,7 +82,7 @@ for i in range(N_MC):
         nuis_seed['xsec_sigma'] = 0.
         nuis_seed['flux_sigma'] = 0.
         
-        profile_fit = fitter_profile.Fit(mock_data, osc_seed, nuis_seed)
+        profile_fit = fitter_profile.Fit(mock_data, osc_seed, nuis_seed, True)
         profile_results = str(osc_seed) + ' ' + str(nuis_seed)  # extract profile fitted values
 
         # write output to a text file

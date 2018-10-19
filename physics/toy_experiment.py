@@ -346,23 +346,25 @@ class Fitter():
     return amin
  
 
-  def Fit(self, data, osc_seed, nuis_seed):
+  def Fit(self, data, osc_seed, nuis_seed, batch=False):
 
-    print "Finding best fit for: ",
-    for fitvar in self.fitvars:
-      print " ", fitvar.Key(),
-    for syst in self.systs:
-      print " ", syst
-    print "...."
+    if not batch:
+      print "Finding best fit for: ",
+      for fitvar in self.fitvars:
+        print " ", fitvar.Key(),
+      for syst in self.systs:
+        print " ", syst
+      print "...."
 
     chi = self.RunFitterSeeded(data, osc_seed, nuis_seed)
 
-    print "Best fit: ",
-    for fitvar in self.fitvars:
-      print ", ", fitvar.Key(), " = ", fitvar.GetValue(osc_seed[fitvar.OscKey()]),
-    for syst in self.systs:
-      print ", ", syst, " = ", nuis_seed[syst],
-    print ", LL = ", chi
+    if not batch: 
+      print "Best fit: ",
+      for fitvar in self.fitvars:
+        print ", ", fitvar.Key(), " = ", fitvar.GetValue(osc_seed[fitvar.OscKey()]),
+      for syst in self.systs:
+        print ", ", syst, " = ", nuis_seed[syst],
+      print ", LL = ", chi
 
     return chi
 
