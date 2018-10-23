@@ -238,20 +238,32 @@ class FitVar:
     return self.osc_key
 
 class FitConstrainedVar(FitVar):
-  def __init__(self, key, osc_key, fcn, invfcn, lowlimit, highlimit, strong=True):
+  def __init__(self, key, osc_key, fcn, invfcn, lowlimit, highlimit, strong=True, mod=False):
     FitVar.__init__(self, key, osc_key, fcn, invfcn)
     self.lo = lowlimit
     self.hi = highlimit
     self.constraint = strong
+    self.mod = mod
 
   def Penalty(self, value):
-    if(value >= self.lo and value <= self.hi): return 0.
+    abs_value = value
+    if self.mod:
+      abs_value = abs(value)
+    if(abs_value >= self.lo and abs_value <= self.hi): return 0.
     mean = (self.lo + self.hi)/2.
     rad = (self.hi - self.lo)/2.
-    return (((value-mean)/rad)**2) - 1.
+    return (((abs_value-mean)/rad)**2) - 1.
 
   def Clamp(self, value):
-    return max(self.lo, min(value, self.hi))
+    abs_value = value
+    if self.mod:
+      abs_value = abs(value)
+      if value >= 0:
+        return max(self.lo, min(abs_value, self.hi))
+      if value < 0:
+        return -max(self.lo, min(abs_value, self.hi))
+    if not self.mod:
+      return max(self.lo, min(abs_value, self.hi))
 
   def SetValue(self, *args):
     param = {}

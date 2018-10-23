@@ -2,8 +2,9 @@ from math import *
 from ROOT import *
 from toy_experiment import FitVar, FitDcpInPi, FitConstrainedVar, Fitter
 import sys
+import random
 
-def current_params(i, size, key):
+def current_grid_params(i, size, key, fc_type):
     """
     Figure out current parameter values on the grid.
 
@@ -14,21 +15,33 @@ def current_params(i, size, key):
     """
    
     if key == 'theta23':
-      current_sin2theta23 = i * 0.4 / (size + 1.0) + 0.3 + 0.4 / (size + 1.0)  # sin2theta23 ranges from 0 to 1
-      current_theta23 = asin(sqrt(current_sin2theta23))
-      return current_theta23
+      if "UO" in fc_type:
+        current_sin2theta23 = i * 0.5 / (size + 1.0) + 0.5 + 0.5 / (size + 1.0)
+        return asin(sqrt(current_sin2theta23))
+      if "LO" in fc_type:
+        current_sin2theta23 = i * 0.5 / (size + 1.0) +  0.5 / (size + 1.0)
+        return asin(sqrt(current_sin2theta23))
+      if "UO" not in fc_type and "LO" not in fc_type:
+        current_sin2theta23 = i * 1. / (size + 1.0) + 1. / (size + 1.0)
+        return asin(sqrt(current_sin2theta23))
 
     if key == 'dcp':
       current_dcp = i * 2.0 * pi / (size + 1.0) + 2.0 * pi / (size + 1.0)  # dcp ranges from 0 to 2 pi
       return current_dcp
 
     if key == 'dmsq_32':
-      current_dmsq32 = i * 1.e-3/ ( size + 1.0) + 2.e-3 + 1.e-3/ (size + 1.0)
-      return current_dmsq32
+      if "NH" in fc_type:
+        current_dmsq32 = i * 3.e-3/ (size + 1.0) + 1.e-3 + 3.e-3/ (size + 1.0)
+        return current_dmsq32
+      if "IH" in fc_type:
+        current_dmsq32 = i * 3.e-3/ (size + 1.0) + 1.e-3 + 3.e-3/ (size + 1.0)
+        return -current_dmsq32
+      if "NH" not in fc_type and "IH" not in fc_type:
+        sys.exit("Please provide hierarchy, either NH or IH")
 
     return sys.exit("Invalid Key. Please provide the right parameter key")
 
-def get_params(index, grid_size, contour_vars):
+def get_grid_params(index, grid_size, contour_vars, fc_type):
     """
     Figure out current parameter values on the grid.
 
@@ -39,9 +52,41 @@ def get_params(index, grid_size, contour_vars):
     contour_indices = [(index / (grid_size**k)) % grid_size for k, v in enumerate(contour_vars)]
     contour_params = {}
     for k, v in enumerate(contour_vars):
-        contour_params[v] = current_params(contour_indices[k], grid_size, v)
+        contour_params[v] = current_grid_params(contour_indices[k], grid_size, v, fc_type)
     
     return contour_params 
+
+def current_profile_params(key, fc_type):
+
+  if key == 'theta23':
+    if "LO" in fc_type:
+      current_sin2theta23 = 0.3 + 0.2*random.random()
+      return asin(sqrt(current_sin2theta23))
+    if "UO" in fc_type:
+      current_sin2theta23 = 0.5 + 0.2*random.random()
+      return asin(sqrt(current_sin2theta23))
+    if "UO" not in fc_type and "LO" not in fc_type:
+      current_sin2theta23 = 0.3 + 0.4*random.random()
+      return asin(sqrt(current_sin2theta23))
+  if key == 'dcp':
+    return random.random()*2.0*pi
+  if key == 'dmsq_32':
+    if "IH" in fc_type:
+      return (-3.e-3 + random.random()*1.e-3)
+    if "NH" in fc_type:
+      return (2.e-3 + random.random()*1.e-3)
+    if "IH" not in fc_type and "NH" not in fc_type:
+      sys.exit("Please provide hierarchy, either NH or IH")
+
+    return sys.exit("Invalid Key. Please provide the right parameter key")
+
+def get_profile_params(profile_vars, fc_type):
+
+  profile_params = {}
+  for v in profile_vars:
+    profile_params[v] = current_profile_params(v, fc_type)
+  return profile_params
+
 
 def initiate_fitters(fc_type, contour_vars):
     """
@@ -53,37 +98,41 @@ def initiate_fitters(fc_type, contour_vars):
     kFitDcpInPi = FitVar('dcp', 'dcp', FitDcpInPi, lambda x: x*pi)
 
     kFitSinSqTheta23 = FitConstrainedVar('ssth23','theta23', lambda x: sin(x)**2,
-                                 lambda x: asin(min(sqrt(max(0, x)), 1)), 0.3, 0.7, False)
+                                 lambda x: asin(min(sqrt(max(0, x)), 1)), 0., 1., True)
     kFitSinSqTheta23UO = FitConstrainedVar('ssth23','theta23', lambda x: sin(x)**2,
-                                 lambda x: asin(min(sqrt(max(0, x)), 1)), 0.5, 0.7, False)
+                                 lambda x: asin(min(sqrt(max(0, x)), 1)), 0.5, 1., True)
     kFitSinSqTheta23LO = FitConstrainedVar('ssth23','theta23', lambda x: sin(x)**2,
-                                 lambda x: asin(min(sqrt(max(0, x)), 1)), 0.3, 0.5, False)
+                                 lambda x: asin(min(sqrt(max(0, x)), 1)), 0., 0.5, True)
 
     kFitDmsq32NH = FitConstrainedVar('dmsq_32', 'dmsq_32', lambda x: x*1000.,
-                             lambda x: x/1000., 2., 3.)
+                             lambda x: x/1000., 1., 4., True)
 
     kFitDmsq32IH = FitConstrainedVar('dmsq_32', 'dmsq_32', lambda x: x*1000.,
-                             lambda x: x/1000., -3., -2.)
+                             lambda x: x/1000., -4., -1., True)
+    
+    kFitDmsq32 = FitConstrainedVar('dmsq_32', 'dmsq_32', lambda x: x*1000.,
+                             lambda x: x/1000., 1., 4., True, True)
 
-    fitvars_global = []
+    fitvars_global = [kFitDcpInPi, kFitSinSqTheta23, kFitDmsq32]
+    fitvars_select = []
     fitvars_profile = []
     
     if "NH" in fc_type:
-        fitvars_global.append(kFitDmsq32NH)
+        fitvars_select.append(kFitDmsq32NH)
     if "IH" in fc_type:
-        fitvars_global.append(kFitDmsq32IH)
+        fitvars_select.append(kFitDmsq32IH)
     if "UO" in fc_type:
-        fitvars_global.append(kFitSinSqTheta23UO)
+        fitvars_select.append(kFitSinSqTheta23UO)
     if "LO" in fc_type:
-        fitvars_global.append(kFitSinSqTheta23LO)
+        fitvars_select.append(kFitSinSqTheta23LO)
     if "UO" not in fc_type and "LO" not in fc_type:
-        fitvars_global.append(kFitSinSqTheta23)
+        fitvars_select.append(kFitSinSqTheta23)
     if "NH" not in fc_type and "IH" not in fc_type:
         sys.exit("Please provide hierarchy, either NH or IH")
-    fitvars_global.append(kFitDcpInPi)
+    fitvars_select.append(kFitDcpInPi)
    
     # profiled variables are just those that aren't in contour_vars
-    fitvars_profile = [fitvar for fitvar in fitvars_global if fitvar.OscKey() not in contour_vars]
+    fitvars_profile = [fitvar for fitvar in fitvars_select if fitvar.OscKey() not in contour_vars]
     nuis_vars = ['xsec_sigma', 'flux_sigma']
 
     fitter_global = Fitter(fitvars_global, nuis_vars)
