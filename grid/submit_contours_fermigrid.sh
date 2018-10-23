@@ -6,7 +6,7 @@ FCBASEDIR=`dirname "$0"`"/.."
 
 slice_size=1600
 # slice_types=("dcp__theta23_IH" "dcp__theta23_NH" "theta23__dmsq_32_NH" "theta23__dmsq_32_IH")
-slice_types=("dcp__theta23_NH")
+slice_types=("dcp__theta23_NH" "theta23__dmsq_32_NH")
 vars=("dcp__theta23" "theta23__dmsq_32")
 
 FCFILE='fc.py'
@@ -31,8 +31,8 @@ for stype in "${slice_types[@]}"; do
   jobsub_cmd="jobsub_submit -G nova" 
   jobsub_cmd=$jobsub_cmd" -N "$slice_size 
   jobsub_cmd=$jobsub_cmd" --resource-provides=usage_model=DEDICATED,OPPORTUNISTIC"
-  jobsub_cmd=$jobsub_cmd" --disk=2000MB"
-  jobsub_cmd=$jobsub_cmd" --memory=2000MB"
+  jobsub_cmd=$jobsub_cmd" --disk=100MB"
+  jobsub_cmd=$jobsub_cmd" --memory=500MB"
   jobsub_cmd=$jobsub_cmd" --expected-lifetime=86400s"
   jobsub_cmd=$jobsub_cmd" -f dropbox://"$FCBASEDIR"/physics/"$FCFILE" -f dropbox://"$FCBASEDIR"/physics/fc_helper.py -f dropbox://"$FCBASEDIR"/physics/toy_experiment.py"
   jobsub_cmd=$jobsub_cmd" file://"$FCBASEDIR"/grid/toyfc_grid_script.sh"
