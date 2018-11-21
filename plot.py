@@ -74,16 +74,16 @@ def efd_curve(coeffs, locus=(0., 0.), n=300):
     return xt, yt
 
 
-def plot_smooth_contour(cont_stat, cont_thres, n_point):
-    conf = smooth_grid(cont_stat, n_point) < smooth_grid(cont_thres, n_point)
+def plot_smooth_contour(conf):
+    n_point = conf.shape[0]
     conf = expand_image(conf)
     contours = [x - 10 for x in measure.find_contours(conf, 0.9)]
-    for contour in contours:
-        coeffs = elliptic_fourier_descriptors(contour, order=10)
-        xt, yt = efd_curve(coeffs, np.mean(contour, axis=0))
-        plt.plot(yt, xt)
-        plt.xlim(0, n_point - 1)
-        plt.ylim(0, n_point - 1)
+    contour = contours[0]
+    coeffs = elliptic_fourier_descriptors(contour, order=10)
+    xt, yt = efd_curve(coeffs, np.mean(contour, axis=0))
+    plt.plot(yt, xt)
+    plt.xlim(0, n_point - 1)
+    plt.ylim(0, n_point - 1)
 
 
 def plot_points(all_points, selected):
@@ -115,3 +115,21 @@ def plot_priority(scores):
     plt.xlabel(r'$\delta_{CP}$', fontsize=14)
     plt.ylabel(r'$\sin^2{\theta_{23}}$', fontsize=14)
     plt.show()
+
+
+def plot_axis(contour_type):
+    if contour_type == 'dcp__theta23_NH' or contour_type == 'dcp__theta23_IH':
+        plt.xlabel(r'$\delta_{CP}$', fontsize=20)
+        plt.xticks([0, 10, 20, 30, 39],
+                   [r'$0$', r'$0.5\pi$', r'$\pi$', r'$1.5\pi$', r'$2\pi$'], fontsize=16)
+        plt.ylabel(r'$\sin^2{\theta_{23}}$', fontsize=20)
+        plt.yticks([39, 30, 20, 10, 0],
+                   [r'$0$', r'$0.25$', r'$0.5$', r'$0.75$', r'$1$'], fontsize=16)
+    elif contour_type == 'theta23__dmsq_32_NH' or contour_type == 'theta23__dmsq_32_IH':
+        plt.xlabel(r'$\sin^2{\theta_{23}}$', fontsize=20)
+        plt.xticks([0, 10, 20, 30, 39],
+                   [r'$0$', r'$0.25$', r'$0.5$', r'$0.75$', r'$1$'], fontsize=16)
+        plt.ylabel(r'$\Delta m_{32}^2$', fontsize=20)
+        plt.yticks([39, 30, 20, 10, 0],
+                   [r'$1\times10^{-3}$', r'$1.75\times10^{-3}$', r'$2.5\times10^{-3}$',
+                    r'$3.25\times10^{-3}$', r'$4\times10^{-3}$'], fontsize=16)

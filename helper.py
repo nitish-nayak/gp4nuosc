@@ -1,54 +1,65 @@
+"""
+This script has helper functions to load data into numpy arrays:
+load_contour_dist and load_fitted_contour
+as well as helper functions to perform numerical experiments.
+"""
+
 import matplotlib.pyplot as plt
 from utils import *
 from approximation import adaptive_search
 
 
-def load_contour_thres(file_pattern, conf_level):
+def load_contour_dist_2d(file_pattern, grid_size, n_sample):
     """
-    Load likelihood ratio test threshold contour from simulated data files.
-
-    :param file_pattern: (string) pattern of data files or directory_path/contour_name_i.txt
-    :param conf_level: (int) confidence level or 1 - alpha (of likelihood ratio test)
-    :return: (numpy array) likelihood ratio test threshold values on the grid
+    Load likelihood ratio test statistic distributions from simulated data files.
     """
-    contour_thres = np.zeros((20, 20))
-    for i in range(400):
-        j = i / 20
-        k = i % 20
+    contour_dist = np.zeros((grid_size, grid_size, n_sample))
+    for i in range(grid_size * grid_size):
+        j = i / grid_size
+        k = i % grid_size
         loglik_global = []
         loglik_profile = []
         try:
-            with open(file_pattern + '_{}.txt'.format(i), 'r') as f:
-                for line in f: 
-                    loglik_global.append(float(line.split(',')[8][1:]))
-                    loglik_profile.append(float(line.split(',')[9][1:-2]))
+            # TODO: file_pattern seems like a dumb way of handling files
+            with open(file_pattern + '_{a}.{b}_of_1600.txt'.format(a=i, b=i + 1), 'r') as f:
+                for line in f:
+                    if len(line.split(',')) == 10:
+                        loglik_global.append(float(line.split(',')[8][1:]))
+                        loglik_profile.append(float(line.split(',')[9][1:-2]))
             loglik_global = np.asarray(loglik_global)
             loglik_profile = np.asarray(loglik_profile)
-            lrt = 2 * (loglik_profile - loglik_global)  # distribution of likelihood ratio test statistic 
-            contour_thres[j, k] = np.percentile(lrt, conf_level)
+            lrt = 2 * (loglik_profile - loglik_global)  # distribution of likelihood ratio test statistic
+            n = lrt.shape[0]
+            if n < n_sample:  # not enough
+                contour_dist[j, k, :n] = lrt
+                contour_dist[j, k, n:] = -1
+            else:
+                contour_dist[j, k, :] = lrt[:n_sample]
         except:
-            contour_thres[j, k] = contour_thres[j, k - 1]  # catch occasional missing data files
-    return contour_thres
+            print(i)
+            contour_dist[j, k, :] = contour_dist[j, k - 1, :]  # catch occasional missing data files
+    return contour_dist
 
 
-def load_fitted_contour(filepath):
+def load_contour_stat_2d(file_path, grid_size):
     """
     Load contour of fitted LRT statistic from data in text file.
     """
     loglik_global = []
     loglik_profile = []
-    with open(filepath, 'r') as f:
-        for line in f: 
+    with open(file_path, 'r') as f:
+        for line in f:
             loglik_global.append(float(line.split(',')[8][1:]))
             loglik_profile.append(float(line.split(',')[9][1:-2]))
     loglik_global = np.asarray(loglik_global)
     loglik_profile = np.asarray(loglik_profile)
-    contour_fit = np.zeros((20, 20))
-    for i in range(400):
-        j = i / 20
-        k = i % 20
-        contour_fit[j, k] = 2 * (loglik_profile[i] - np.min(loglik_profile))
-    return contour_fit
+    contour_stat = np.zeros((grid_size, grid_size))
+    # TODO: implement 1d version
+    for i in range(grid_size * grid_size):
+        j = i / grid_size
+        k = i % grid_size
+        contour_stat[j, k] = 2 * (loglik_profile[i] - np.min(loglik_profile))
+    return contour_stat
 
 
 def perform_comparison(real_data_num, hierarchy, init_size, n_iter, iter_size, post_hoc_smooth=True, verbose=True):
@@ -85,27 +96,3 @@ def perform_comparison(real_data_num, hierarchy, init_size, n_iter, iter_size, p
         print('Percentage of pointwise overlap: {}'.format(overlap))
 
     return overlap
-
-
-def load_dist(file_pattern, coord_list):
-    """
-    Load distributions at specific points on the grid.
-    :param file_pattern: (string) pattern of data files or directory_path/contour_name_i.txt
-    :param coord_list: (list) of tuples that are grid coordinates
-    :return: (list) of distributions
-    """
-    dist = []
-    for coord in coord_list:
-        j, k = coord
-        i = j * 20 + k
-        loglik_global = []
-        loglik_profile = []
-        with open(file_pattern + '_{}.txt'.format(i), 'r') as f:
-            for line in f:
-                loglik_global.append(float(line.split(',')[8][1:]))
-                loglik_profile.append(float(line.split(',')[9][1:-2]))
-        loglik_global = np.asarray(loglik_global)
-        loglik_profile = np.asarray(loglik_profile)
-        lrt = 2 * (loglik_profile - loglik_global)  # distribution of likelihood ratio test statistic
-        dist.append(lrt)
-    return dist

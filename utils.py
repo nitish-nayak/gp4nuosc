@@ -2,19 +2,48 @@ import numpy as np
 from scipy.interpolate import griddata
 
 
-# Conversion between grid data format and regular data format
+def calculate_percentile_2d(contour_dist, contour_stat):
+    """
+    Calculate percentile of statistic in distribution on 2d contour.
+    """
+    grid_size = contour_dist.shape[0]
+    contour_tile = np.zeros((grid_size, grid_size))
+    for i in range(grid_size):
+        for j in range(grid_size):
+            stat = contour_stat[i, j]
+            reference = np.sort(contour_dist[i, j])
+            contour_tile[i, j] = np.searchsorted(reference, stat)
+    contour_tile = contour_tile / contour_dist.shape[2]
+    return contour_tile
+
+
+def flatten_data(contour_dist):
+    """
+    Similar to grid_to_data and should be merged.
+    """
+    d, s, n = contour_dist.shape
+    all_points = np.zeros((d * s, 2))
+    all_samples = np.zeros((d * s, n))
+    for i in range(d):
+        for j in range(s):
+            all_points[i * d + j, 0] = (1.0 / float(d)) * (i + 1)
+            all_points[i * d + j, 1] = (1.0 / float(s)) * (j + 1)
+            all_samples[i * d + j, :] = contour_dist[i, j, :]
+    return all_points, all_samples
+
 
 def grid_to_data(grid):
     """
     Map grid (position, value) to data (X, y) for modeling. 
     """
+    # TODO: check linspace and meshgrid
     m = grid.shape[0]
     n = grid.shape[1]
     data = np.zeros((m * n, 3))
     for i in range(m):
         for j in range(n):
             data[i * m + j, 0] = (1.0 / float(m)) * (i + 1)
-            data[i * m + j, 1] = (5.0 / float(n)) * (j + 1)
+            data[i * m + j, 1] = (1.0 / float(n)) * (j + 1)
             data[i * m + j, 2] = grid[i, j]
     return data
 
@@ -23,6 +52,7 @@ def data_to_grid(data, m):
     """
     Map data onto a grid of size m.
     """
+    # TODO: is this just reshape?
     n = m
     data_grid = np.zeros((m, n))
     for i in range(m):
@@ -31,12 +61,11 @@ def data_to_grid(data, m):
     return data_grid
 
 
-# Smooth data on a finer grid
-
 def grid_to_points(grid):
     """
     Map grid to points in the unit square for smoothing.
     """
+    # TODO: fix arbitrary size
     points = np.zeros((20 * 20, 2))
     values = np.zeros(20 * 20)
     n = 0
