@@ -6,7 +6,7 @@ as well as helper functions to perform numerical experiments.
 
 import matplotlib.pyplot as plt
 from utils import *
-from approximation import adaptive_search
+#from approximation import adaptive_search
 
 
 def load_contour_dist_2d(file_pattern, grid_size, n_sample):
@@ -62,10 +62,14 @@ def load_contour_stat_2d(file_path, grid_size):
     return contour_stat
 
 
+def calculate_overlap(hat_grid, contour_tile):
+    contour_68_diff = (hat_grid < 0.68) != (contour_tile < 0.68)
+    contour_90_diff = (hat_grid < 0.90) != (contour_tile < 0.90)
+    return 0.5 * (1 - np.mean(contour_68_diff)) + 0.5 * (1 - np.mean(contour_90_diff))
+
+
+"""
 def perform_comparison(real_data_num, hierarchy, init_size, n_iter, iter_size, post_hoc_smooth=True, verbose=True):
-    """
-    Compare Feldman-Cousins with approximation.
-    """
     if hierarchy == 'normal':
         contour_thres = np.load('/Users/linggeli/monte_carlo/data/penalty_normal_contour_thres_68.npy')
         contour_stat = load_fitted_contour('/Users/linggeli/monte_carlo/data/penalty_normal/contour_normal_fit_{}.txt'.format(real_data_num))
@@ -96,3 +100,4 @@ def perform_comparison(real_data_num, hierarchy, init_size, n_iter, iter_size, p
         print('Percentage of pointwise overlap: {}'.format(overlap))
 
     return overlap
+"""

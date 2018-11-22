@@ -17,7 +17,7 @@ def calculate_percentile_2d(contour_dist, contour_stat):
     return contour_tile
 
 
-def flatten_data(contour_dist):
+def flatten_dist(contour_dist):
     """
     Similar to grid_to_data and should be merged.
     """

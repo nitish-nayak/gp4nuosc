@@ -6,6 +6,7 @@ from pyefd import elliptic_fourier_descriptors
 from utils import *
 
 
+# TODO: this should be deprecated
 def plot_contour_image(contour, name='', fig_size=4):
     """
     Plot contour as an image.
@@ -26,6 +27,7 @@ def plot_contour_image(contour, name='', fig_size=4):
     plt.show()
 
 
+# TODO: this should be deprecated
 def plot_conf_contours(contours, name, fig_size=4, colour='red'):
     """
     Plot confidence contours.
@@ -86,6 +88,7 @@ def plot_smooth_contour(conf):
     plt.ylim(0, n_point - 1)
 
 
+# TODO: this is deprecated
 def plot_points(all_points, selected):
     plt.scatter(all_points[selected == 1, 1], all_points[selected == 1, 0], color='black')
     plt.scatter(all_points[:, 1], all_points[:, 0], color='gray', alpha=0.1)
@@ -102,6 +105,7 @@ def plot_points(all_points, selected):
     plt.show()
 
 
+# TODO: also deprecated
 def plot_priority(scores):
     scores_pct = np.argsort(np.argsort(scores)) * 100.0 / (len(scores) - 1)
     score_grid = data_to_grid(scores_pct, int(np.sqrt(scores.shape[0])))
@@ -117,19 +121,40 @@ def plot_priority(scores):
     plt.show()
 
 
-def plot_axis(contour_type):
+def plot_iteration(sample_size, all_points, priority_grid, hat_grid):
+    fig = plt.figure(figsize=(8, 8))
+
+    plt.subplot(221)
+    rgba_colors = np.zeros((400, 4))
+    rgba_colors[:, 3] = sample_size * 1.0 / 2000
+    plt.scatter(all_points[:, 1], all_points[:, 0], color=rgba_colors)
+
+    plt.subplot(222)
+    im1 = plt.imshow(np.flip(priority_grid, axis=0), cmap='Greens', interpolation='none', alpha=0.5)
+
+    plt.subplot(223)
+    im2 = plt.imshow(np.flip(hat_grid, axis=0), cmap='coolwarm', interpolation='none')
+    plt.colorbar(im2)
+
+    plt.subplot(224)
+    plot_smooth_contour(hat_grid < 0.68)
+    plot_smooth_contour(hat_grid < 0.9)
+
+
+# TODO: handle more general plots
+def plot_axis(contour_type, axis_max):
     if contour_type == 'dcp__theta23_NH' or contour_type == 'dcp__theta23_IH':
         plt.xlabel(r'$\delta_{CP}$', fontsize=20)
-        plt.xticks([0, 10, 20, 30, 39],
+        plt.xticks([0, 0.25 * axis_max, 0.5 * axis_max, 0.75 * axis_max, axis_max],
                    [r'$0$', r'$0.5\pi$', r'$\pi$', r'$1.5\pi$', r'$2\pi$'], fontsize=16)
         plt.ylabel(r'$\sin^2{\theta_{23}}$', fontsize=20)
-        plt.yticks([39, 30, 20, 10, 0],
+        plt.yticks([axis_max, 0.75 * axis_max, 0.5 * axis_max, 0.25 * axis_max, 0],
                    [r'$0$', r'$0.25$', r'$0.5$', r'$0.75$', r'$1$'], fontsize=16)
     elif contour_type == 'theta23__dmsq_32_NH' or contour_type == 'theta23__dmsq_32_IH':
         plt.xlabel(r'$\sin^2{\theta_{23}}$', fontsize=20)
-        plt.xticks([0, 10, 20, 30, 39],
+        plt.xticks([0, 0.25 * axis_max, 0.5 * axis_max, 0.75 * axis_max, axis_max],
                    [r'$0$', r'$0.25$', r'$0.5$', r'$0.75$', r'$1$'], fontsize=16)
         plt.ylabel(r'$\Delta m_{32}^2$', fontsize=20)
-        plt.yticks([39, 30, 20, 10, 0],
+        plt.yticks([axis_max, 0.75 * axis_max, 0.5 * axis_max, 0.25 * axis_max, 0],
                    [r'$1\times10^{-3}$', r'$1.75\times10^{-3}$', r'$2.5\times10^{-3}$',
                     r'$3.25\times10^{-3}$', r'$4\times10^{-3}$'], fontsize=16)
