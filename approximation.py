@@ -8,10 +8,12 @@ from scipy.stats import binom
 def quantile_interval(level, n, p):
     """
     Calculate quantiles for confidence interval endpoints.
+    Example: quantile_interval(0.90, 500, 0.90) gives the lower and upper endpoints (indices)
+    for the 90th percentile of a probability distribution based on a sample of size 500.
 
-    level: (float) confidence interval level between 0 and 1
-    n: (int) sample size
-    p: (float) percentile of interest between 0 and 1
+    :param level: (float) confidence interval level between 0 and 1
+    :param n: (int) sample size
+    :param p: (float) percentile of interest between 0 and 1
     """
     # TODO: need to check corner cases
     l = int(n * p)
@@ -37,6 +39,11 @@ def quantile_interval(level, n, p):
 def percentile_interval(sample, x, level):
     """
     Confidence interval for the percentile of x using sample at level.
+    Note: this implementation calls quantile_interval recursively.
+
+    :param sample: (1d numpy array) sample data
+    :param x: (float) single observation
+    :param level: (float) confidence interval level between 0 and 1
     """
     n = sample.shape[0]
     sample = np.sort(sample)
@@ -118,6 +125,11 @@ def get_current_training(all_points, sample_size):
 def get_current_target(all_samples, all_obs, sample_size):
     """
     Current target with point and interval estimates.
+
+    :param all_samples: (2d numpy array) each row is the sample at a point
+    :param all_obs: (1d numpy array) observed statistic vector
+    :param sample_size: (1d numpy array) vector of sample size
+    :return:
     """
     current_indices = np.where(sample_size > 0)[0]
     n_training = current_indices.shape[0]
@@ -125,7 +137,7 @@ def get_current_target(all_samples, all_obs, sample_size):
     current_error = np.zeros((n_training, 2))
     for k, i in enumerate(current_indices):
         n = int(sample_size[i])
-        sample = np.sort(all_samples[i, :n])
+        sample = np.sort(all_samples[i, :n])  # only use sample size n
         obs = all_obs[i]
         current_target[k] = np.searchsorted(sample, obs) * 1.0 / sample.shape[0]  # point estimate
         l, r = percentile_interval(sample, obs, 0.68)  # 68% interval estimate (1 standard deviation)
@@ -138,7 +150,7 @@ def build_approximation(current_points, current_target, current_error, all_point
     """
     Train GP approximation and make prediction.
     """
-    variance = (current_error[:, 1] - current_error[:, 0]) ** 2 + 0.0001
+    variance = (current_error[:, 1] - current_error[:, 0]) ** 2 + 0.0001  # (diagonal) variance vector
     gp = GaussianProcessRegressor(kernel=RBF()+WhiteKernel(), alpha=variance, normalize_y=True)
     gp = gp.fit(current_points, current_target)
     return gp.predict(all_points, return_std=True)

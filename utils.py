@@ -1,20 +1,9 @@
+"""
+This script has utility functions for data manipulation on the grid.
+"""
+
 import numpy as np
 from scipy.interpolate import griddata
-
-
-def calculate_percentile_2d(contour_dist, contour_stat):
-    """
-    Calculate percentile of statistic in distribution on 2d contour.
-    """
-    grid_size = contour_dist.shape[0]
-    contour_tile = np.zeros((grid_size, grid_size))
-    for i in range(grid_size):
-        for j in range(grid_size):
-            stat = contour_stat[i, j]
-            reference = np.sort(contour_dist[i, j])
-            contour_tile[i, j] = np.searchsorted(reference, stat)
-    contour_tile = contour_tile / contour_dist.shape[2]
-    return contour_tile
 
 
 def flatten_dist(contour_dist):

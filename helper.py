@@ -1,7 +1,7 @@
 """
 This script has helper functions to load data into numpy arrays:
 load_contour_dist and load_fitted_contour
-as well as helper functions to perform numerical experiments.
+as well as helper functions for experiments.
 """
 
 import matplotlib.pyplot as plt
@@ -62,7 +62,25 @@ def load_contour_stat_2d(file_path, grid_size):
     return contour_stat
 
 
+def calculate_percentile_2d(contour_dist, contour_stat):
+    """
+    Calculate percentile of statistic in distribution on 2d contour.
+    """
+    grid_size = contour_dist.shape[0]
+    contour_tile = np.zeros((grid_size, grid_size))
+    for i in range(grid_size):
+        for j in range(grid_size):
+            stat = contour_stat[i, j]
+            reference = np.sort(contour_dist[i, j])
+            contour_tile[i, j] = np.searchsorted(reference, stat)
+    contour_tile = contour_tile / contour_dist.shape[2]
+    return contour_tile
+
+
 def calculate_overlap(hat_grid, contour_tile):
+    """
+    Calculate overlap of 68% and 90% confidence contours.
+    """
     contour_68_diff = (hat_grid < 0.68) != (contour_tile < 0.68)
     contour_90_diff = (hat_grid < 0.90) != (contour_tile < 0.90)
     return 0.5 * (1 - np.mean(contour_68_diff)) + 0.5 * (1 - np.mean(contour_90_diff))
