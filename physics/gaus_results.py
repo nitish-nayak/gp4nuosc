@@ -15,12 +15,19 @@ osc_data['theta23'] = asin(sqrt(0.56))
 osc_data['dmsq_32'] = 2.44e-3
 osc_data['dcp'] = 1.5*pi
 nuis_data = {}
-nuis_data['xsec_nue_sigma'] = 0.
-nuis_data['xsec_numu_sigma'] = 0.
-nuis_data['flux_sigma'] = 0.
+Gaus = GenerateRandom(SystLL, -4., 4., "syst")
+nuis_data['xsec_nue_sigma'] = Gaus.Random()
+nuis_data['xsec_numu_sigma'] = Gaus.Random()
+nuis_data['flux_sigma'] = Gaus.Random()
+print nuis_data
+
+nuis_init_seed = {}
+nuis_init_seed['xsec_nue_sigma'] = 0.
+nuis_init_seed['xsec_numu_sigma'] = 0.
+nuis_init_seed['flux_sigma'] = 0.
 
 model = Generate()
-data = model.Data(osc_data, nuis_data, False)
+data = model.Data(osc_data, nuis_data)
 
 #  save data first
 path_data = os.path.join('./data/', 'toy_data.txt')
@@ -31,7 +38,7 @@ with open(path_data, 'w') as f:
 GRID_SIZE = 20
 for ctypevar in contour_types:
   osc_seed = osc_data.copy()
-  nuis_seed = nuis_data.copy()
+  nuis_seed = nuis_init_seed.copy()
   ctype = ctypevar.split('.')[1]
   cvars = ctypevar.split('.')[0].split('__')
   contour = Contour(ctype, cvars, GRID_SIZE)
@@ -48,7 +55,7 @@ for ctypevar in contour_types:
 
   for index in range(GRID_SIZE**len(cvars)):
     osc_seed = osc_data.copy()
-    nuis_seed = nuis_data.copy()
+    nuis_seed = nuis_init_seed.copy()
 
     grid_params = contour.GetGridParams(index)
     osc_seed.update(grid_params)
