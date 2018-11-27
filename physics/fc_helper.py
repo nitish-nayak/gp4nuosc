@@ -83,7 +83,7 @@ class Contour:
        if "NH" in self.ctype:
          profile_params['dmsq_32'] = abs(data_params['dmsq_32'])
      if 'theta23' not in self.cvars:
-       ssth23 = sin(data_params['theta23']**2)
+       ssth23 = sin(data_params['theta23'])**2
        if "LO" in self.ctype:
          profile_params['theta23'] = asin(sqrt(0.5-abs(0.5-ssth23)))
        if "UO" in self.ctype:
