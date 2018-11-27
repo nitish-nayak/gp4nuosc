@@ -3,19 +3,29 @@ from array import array
 from math import *
 import numpy as np
 from scipy.linalg import eigh
+import os
 
 #################################### Neutrino oscillation probability ####################################
 
 class Generate:
   def __init__(self):
      
-    self.trueE = TF1("trueE", self.TrueE, 0.1, 5, 5)
-    self.trueE.SetParName(0, "xsec_sigma")
-    self.trueE.SetParName(1, "flux_sigma")
-    self.trueE.SetParName(2, "theta23")
-    self.trueE.SetParName(3, "dmsq_32")
-    self.trueE.SetParName(4, "dcp")
+    self.trueENue = TF1("trueENue", self.TrueENue, 0.1, 5, 6)
+    self.trueENue.SetParName(0, "xsec_nue_sigma")
+    self.trueENue.SetParName(1, "xsec_numu_sigma")
+    self.trueENue.SetParName(2, "flux_sigma")
+    self.trueENue.SetParName(3, "theta23")
+    self.trueENue.SetParName(4, "dmsq_32")
+    self.trueENue.SetParName(5, "dcp")
 
+    self.trueENumu = TF1("trueENumu", self.TrueENumu, 0.1, 5, 6)
+    self.trueENumu.SetParName(0, "xsec_nue_sigma")
+    self.trueENumu.SetParName(1, "xsec_numu_sigma")
+    self.trueENumu.SetParName(2, "flux_sigma")
+    self.trueENumu.SetParName(3, "theta23")
+    self.trueENumu.SetParName(4, "dmsq_32")
+    self.trueENumu.SetParName(5, "dcp")
+    
     self.km2ev = 5.06773103202e+09
     self.k2 = 4.62711492217e-09
     self.GeV2eV = 1.0e+09
@@ -30,10 +40,11 @@ class Generate:
 
   def XSec(self, E, sigma):
     """
-    Simulated NueCC - QE XSec
+    Simulated NueCC/NumuCC - QE XSec
     sigma represents shift from nominal
+    Normalisations taken into account elsewhere
     """
-    weight = max(0.84, 1. + sigma*0.04)
+    weight = max(0.6, 1. + sigma*0.1)
     form = 0.
     if E < 1:
       form = form + weight*(TMath.Landau(E, 1, 0.3))
@@ -46,18 +57,24 @@ class Generate:
     Simulated Flux distribution
     sigma represents shift from nominal
     """
-    weight = max(0.42, 0.5 + sigma*0.02)
+    weight = max(0.3, 0.5 + sigma*0.05)
     form = weight*(TMath.Landau(E, 2, weight))
     return form
 
-  def InitOsc(self, th23, dm2_32, dcp):
+  def NumuCalc(self, E, th23, dm2_32):
+
+    return (1.- (sin(2.*th23)**2)*(sin(1.27*dm2_32*810./E)**2))
+
+  def InitOsc(self, th23, dm2_32, dcp, isanti):
     
     th13 = asin(sqrt(2.10e-2))    # reactor mixing angle
-    th12 = asin(sqrt(0.307))      
+    th12 = asin(sqrt(0.305))     
     dm2_21 = 7.53e-5
+    if isanti:
+        dm2_21 = -7.53e-5
     self.dm2_31 = dm2_32+dm2_21
 
-    h11 = dm2_21/self.dm2_31
+    h11 = abs(dm2_21)/self.dm2_31
     sij = sin(th12)
     cij = cos(th12)
 
@@ -93,7 +110,7 @@ class Generate:
     self.initoscH = True
     return 
 
-  def Calc(self, E, th23, dm2_32, dcp):
+  def NueCalc(self, E, th23, dm2_32, dcp, isanti):
     """
     Calculator for oscillation probabilities
     Args: 
@@ -104,7 +121,7 @@ class Generate:
     """
      
     L=810.          # baseline
-    self.InitOsc(th23, dm2_32, dcp)
+    self.InitOsc(th23, dm2_32, dcp, isanti)
     lv = 2.*self.GeV2eV*E/self.dm2_31
     kr2GNe = self.k2*sqrt(2)*self.Gf*self.Ne
 
@@ -124,27 +141,37 @@ class Generate:
     p_osc = abs(amp_osc[0])**2
     return p_osc
 
-  def TrueE(self, x, par):
-    toy_pot = 4e4
-    unosc = self.XSec(x[0], par[0])*self.Flux(x[0], par[1])
-    osc_weight = self.Calc(x[0], par[2], par[3], par[4])
+  def TrueENue(self, x, par):
+    toy_pot = 3.e4
+    unosc = self.XSec(x[0], par[0])*self.Flux(x[0], par[2])
+    osc_weight = self.NueCalc(x[0], par[3], par[4], par[5], False)
+    return toy_pot*unosc*osc_weight
+  
+  def TrueENumu(self, x, par):
+    toy_pot = 1.2e4
+    unosc = self.XSec(x[0], par[1])*self.Flux(x[0], par[2])
+    osc_weight = self.NumuCalc(x[0], par[3], par[4])
     return toy_pot*unosc*osc_weight
 
   def SetParams(self, osc_params, nuis_params):
 
     for key in osc_params.keys():
-      self.trueE.SetParameter(key, osc_params[key])
+      self.trueENue.SetParameter(key, float(osc_params[key]))
+      self.trueENumu.SetParameter(key, float(osc_params[key]))
     for key in nuis_params.keys():
-      self.trueE.SetParameter(key, nuis_params[key])
+      self.trueENue.SetParameter(key, float(nuis_params[key]))
+      self.trueENumu.SetParameter(key, float(nuis_params[key]))
 
   def MC(self, osc_params, nuis_params, hname="recoE_pred"):
     
     self.SetParams(osc_params, nuis_params)
-    nbins_pred = 8
-    recoE_pred = TH1D(hname, hname, nbins_pred, 0.5, 4.5)
+    nbins_pred = 24
+    recoE_pred = TH1D(hname, hname, nbins_pred, 0.5, 12.5)
     # actually fill prediction in analysis bins
-    for binx in range(nbins_pred):
-      recoE_pred.SetBinContent(binx+1, self.trueE.Integral((float(binx)/2.)+0.5, (float(binx)/2.)+1.))
+    for binx in range(8):
+      recoE_pred.SetBinContent(binx+1, self.trueENue.Integral((float(binx)/2.)+0.5, (float(binx)/2.)+1.))
+    for binx in range(16):
+      recoE_pred.SetBinContent(8+binx+1, self.trueENumu.Integral((float(binx)/4.)+0.5, (float(binx)/4.)+0.75))
 
     return recoE_pred
   
@@ -153,9 +180,13 @@ class Generate:
     self.SetParams(osc_params, nuis_params)
     g = TGraph()
     res = 1000
-    tot = self.trueE.Integral(0.5, 4.5)
+    totNue = self.trueENue.Integral(0.5, 4.5)
+    totNumu = self.trueENumu.Integral(0.5, 4.5)
     for i in range(res):
-      g.SetPoint(i, 0.5+(i-1)*4./res, self.trueE.Integral(0.5+(i-1)*4./res, 0.5+(i)*4./res)*res/8.)
+      g.SetPoint(i, 0.5+(i-1)*4./res, self.trueENue.Integral(0.5+(i-1)*4./res, 0.5+(i)*4./res)*res/8.)
+    for i in range(res, 2*res):
+      j = i - res
+      g.SetPoint(i, 0.5+(i-1)*4./res, self.trueENumu.Integral(0.5+(j-1)*4./res, 0.5+(j)*4./res)*res/8.)
 
     return g
 
@@ -166,20 +197,27 @@ class Generate:
     if isfake:
       recoE_data = self.MC(osc_params, nuis_params, hname)
     else: 
-      nbins = 8
-      pois = TRandom3()
-      pois.SetSeed(0)
-      samples = pois.Poisson(self.trueE.Integral(0.1,5))
-      recoE_data = TH1D(hname, hname, nbins, 0.5, 4.5)
-      for i in xrange(samples+10000):
-        trueE_i = self.trueE.GetRandom()
+      nbins = 24
+      gRandom.SetSeed(0)
+      poisNue = TRandom3()
+      poisNue.SetSeed(0)
+      poisNumu = TRandom3()
+      poisNumu.SetSeed(0)
+      samplesNue = poisNue.Poisson(self.trueENue.Integral(0.1,5))
+      samplesNumu = poisNumu.Poisson(self.trueENumu.Integral(0.1,5))
+      recoE_data = TH1D(hname, hname, nbins, 0.5, 12.5)
+      for i in xrange(samplesNue):
+        trueE_i = self.trueENue.GetRandom()
         res_i = 1.
-        #  res_i = self.resolution.GetRandom()
-        # ROOT probably needs some iterations to truly get random values from TF1. Do that
-        if i > 10000:
-          recoE_data.Fill(trueE_i*res_i)
+        if trueE_i <= 4.5 and trueE_i > 0.5: 
+          recoE_data.Fill(trueE_i)
+      for i in xrange(samplesNumu):
+        trueE_i = self.trueENumu.GetRandom()
+        if trueE_i <= 4.5 and trueE_i > 0.5:
+          recoE_data.Fill(4.5+(2.*trueE_i-1.))
 
-      pois.Delete()
+      poisNue.Delete()
+      poisNumu.Delete()
     return recoE_data
 
 #################################### Poisson model likelihood ####################################
@@ -214,11 +252,12 @@ class Experiment:
 #################################### Minuit parameter optimization ####################################
 
 class FitVar:
-  def __init__(self, key, osc_key, fcn, invfcn):
+  def __init__(self, key, osc_key, fcn, invfcn, fix = False):
     self.key = key
     self.osc_key = osc_key
     self.fcn = fcn
     self.invfcn = invfcn
+    self.fix = fix
 
   def Penalty(self, value):
     return 0.
@@ -237,21 +276,29 @@ class FitVar:
   def OscKey(self):
     return self.osc_key
 
+  def IsFixed(self):
+    return self.fix
+
+  def GetInvFcn(self):
+    return self.invfcn
+
+  def GetFcn(self):
+    return self.fcn
+
 class FitConstrainedVar(FitVar):
-  def __init__(self, key, osc_key, fcn, invfcn, lowlimit, highlimit, strong=True, mod=False):
-    FitVar.__init__(self, key, osc_key, fcn, invfcn)
+  def __init__(self, key, osc_key, fcn, invfcn, lowlimit, highlimit, mod=False, fix=False):
+    FitVar.__init__(self, key, osc_key, fcn, invfcn, fix)
     self.lo = lowlimit
     self.hi = highlimit
-    self.constraint = strong
     self.mod = mod
 
   def Penalty(self, value):
     abs_value = value
     if self.mod:
       abs_value = abs(value)
-    if(abs_value >= self.lo and abs_value <= self.hi): return 0.
     mean = (self.lo + self.hi)/2.
     rad = (self.hi - self.lo)/2.
+    if(abs_value >= self.lo and abs_value <= self.hi): return 0.
     return (((abs_value-mean)/rad)**2) - 1.
 
   def Clamp(self, value):
@@ -267,13 +314,27 @@ class FitConstrainedVar(FitVar):
 
   def SetValue(self, *args):
     param = {}
-    if self.constraint:
-        param[self.osc_key] = self.invfcn(self.Clamp(*args))
-    else:
-        param[self.osc_key] = self.invfcn(*args)
+    param[self.osc_key] = self.invfcn(self.Clamp(*args))
 
     return param
 
+  def GetLowLimit(self):
+    return self.lo
+  
+  def GetHighLimit(self):
+    return self.hi
+
+class FitVarWithLL(FitConstrainedVar):
+  def __init__(self, key, osc_key, fcn, invfcn, llfcn, lowlimit, highlimit, mod=False, fix=False):
+    FitConstrainedVar.__init__(self, key, osc_key, fcn, invfcn, lowlimit, highlimit, mod, fix)
+    self.llfcn = llfcn
+  
+  def Penalty(self, value):
+    return self.llfcn(value)
+
+  def GetLLFcn(self):
+    return self.llfcn
+ 
 
 def FitDcpInPi(dcp):
   ret = dcp/pi;
@@ -283,6 +344,43 @@ def FitDcpInPi(dcp):
   while ret > 2.: ret -= 2
 
   return ret
+
+def NumuDmsq32LL(dmsq_32):
+  return exp(-((abs(dmsq_32) - 2.44)/0.08)**2/2.)
+
+def NumuSinSqTheta23LL(ssth23):
+  ss2th23 = 4*ssth23*(1-ssth23)
+  return exp(-((ss2th23 - 0.9856)/0.0192)**2/2.)
+
+def SystLL(nuis):
+  return exp(-nuis**2/2.)
+
+def FlatLL(val):
+  return 1.
+
+class GenerateRandom():
+  def __init__(self, llfcn, lowlimit, highlimit, distname):
+    self.fcn = llfcn
+    self.lo = lowlimit
+    self.hi = highlimit
+    self.distname = distname
+    self.pdf = TF1(self.distname, self.PDF, self.lo, self.hi)
+
+  def PDF(self, x):
+    return self.fcn(x[0])
+  
+  def GetPDF(self):
+    g = TGraph()
+    res = 10000
+    diff = self.hi-self.lo
+    for i in range(res):
+      g.SetPoint(i, self.lo+(i-1)*diff/res, self.pdf.Integral(self.lo+(i-1)*diff/res, self.lo+(i)*diff/res)*res/4.)
+    return g
+
+  def Random(self):
+    gRandom.SetSeed(0)
+    return self.pdf.GetRandom() 
+
 
 class Fitter():
   def __init__(self, fitvars, systs):
@@ -331,6 +429,8 @@ class Fitter():
       if val: err = val/2.
       else: err = 0.1
       self.gMinuit.mnparm(count, fitvar.Key(), val, 0.001, 0, 0, ierflag)
+      if fitvar.IsFixed(): 
+          self.gMinuit.FixParameter(count)
       count = count + 1
 
     for syst in self.systs:
@@ -380,21 +480,76 @@ class Fitter():
 
     return chi
 
+kFitDcpInPi = FitVar('dcp', 'dcp', FitDcpInPi, lambda x: x*pi)
+
+kFitSinSqTheta23 = FitConstrainedVar('ssth23','theta23', lambda x: sin(x)**2,
+                             lambda x: asin(min(sqrt(max(0, x)), 1)), 0., 1.)
+kFitSinSqTheta23UO = FitConstrainedVar('ssth23','theta23', lambda x: sin(x)**2,
+                             lambda x: asin(min(sqrt(max(0, x)), 1)), 0.5, 1.)
+kFitSinSqTheta23LO = FitConstrainedVar('ssth23','theta23', lambda x: sin(x)**2,
+                             lambda x: asin(min(sqrt(max(0, x)), 1)), 0., 0.5)
+
+kFitDmsq32NH = FitConstrainedVar('dmsq_32', 'dmsq_32', lambda x: x*1000.,
+                         lambda x: x/1000., 1., 4.)
+
+kFitDmsq32IH = FitConstrainedVar('dmsq_32', 'dmsq_32', lambda x: x*1000.,
+                         lambda x: x/1000., -4., -1.)
+
+kFitDmsq32 = FitConstrainedVar('dmsq_32', 'dmsq_32', lambda x: x*1000.,
+                         lambda x: x/1000., 1., 4., True)
+
+kFitNumuDmsq32 = FitVarWithLL('dmsq_32', 'dmsq_32', lambda x: x*1000.,
+                         lambda x: x/1000., NumuDmsq32LL, 1., 4., True)
+kFitNumuDmsq32NH = FitVarWithLL('dmsq_32', 'dmsq_32', lambda x: x*1000.,
+                         lambda x: x/1000., NumuDmsq32LL, 1., 4.)
+kFitNumuDmsq32IH = FitVarWithLL('dmsq_32', 'dmsq_32', lambda x: x*1000.,
+                         lambda x: x/1000., NumuDmsq32LL, -4., -1.)
+kUnFitNumuDmsq32NH = FitVarWithLL('dmsq_32', 'dmsq_32', lambda x: x*1000.,
+                         lambda x: x/1000., NumuDmsq32LL, 1., 4., False, True)
+kUnFitNumuDmsq32IH = FitVarWithLL('dmsq_32', 'dmsq_32', lambda x: x*1000.,
+                         lambda x: x/1000., NumuDmsq32LL, -4., -1., False, True)
+kFitNumuSinSqTheta23 = FitVarWithLL('ssth23', 'theta23', lambda x: sin(x)**2,
+                         lambda x:asin(min(sqrt(max(0, x)), 1)), NumuSinSqTheta23LL, 0., 1.)
+kFitNumuSinSqTheta23UO = FitVarWithLL('ssth23', 'theta23', lambda x: sin(x)**2,
+                         lambda x:asin(min(sqrt(max(0, x)), 1)), NumuSinSqTheta23LL, 0.5, 1.)
+kFitNumuSinSqTheta23LO = FitVarWithLL('ssth23', 'theta23', lambda x: sin(x)**2,
+                         lambda x:asin(min(sqrt(max(0, x)), 1)), NumuSinSqTheta23LL, 0., 0.5)
+kUnFitNumuSinSqTheta23 = FitVarWithLL('ssth23', 'theta23', lambda x: sin(x)**2,
+                         lambda x:asin(min(sqrt(max(0, x)), 1)), NumuSinSqTheta23LL, 0., 1., False, True)
+kUnFitNumuSinSqTheta23UO = FitVarWithLL('ssth23', 'theta23', lambda x: sin(x)**2,
+                         lambda x:asin(min(sqrt(max(0, x)), 1)), NumuSinSqTheta23LL, 0.5, 1., False, True)
+kUnFitNumuSinSqTheta23LO = FitVarWithLL('ssth23', 'theta23', lambda x: sin(x)**2,
+                         lambda x:asin(min(sqrt(max(0, x)), 1)), NumuSinSqTheta23LL, 0., 0.5, False, True)
+
+
+#  Dmsq32NHRand = GenerateRandom(SystLL, -4., 4., "dmsq_32")
+#  test = TH1D("dmsq_32", "dmsq_32", 8, -1., 1.)
+#  g = Dmsq32NHRand.GetPDF()
+#  c = TCanvas()
+#  test.Draw("hist")
+#  #  test.GetYaxis().SetRangeUser(0, 1)
+#  g.Draw("ac same")
+#  c.Print("test.pdf")
+
+#  for i in xrange(10000):
+  #  test.Fill(Dmsq32NHRand.Random())
+#
 #  osc_data = {}
-#  osc_data['theta23'] = 0.25*pi
+#  osc_data['theta23'] = asin(sqrt(0.56))
 #  osc_data['dmsq_32'] = 2.44e-3
 #  osc_data['dcp'] = 1.5*pi
 #  nuis_data = {}
-#  nuis_data['xsec_sigma'] = 0.
+#  nuis_data['xsec_nue_sigma'] = 0.
+#  nuis_data['xsec_numu_sigma'] = 0.
 #  nuis_data['flux_sigma'] = 0.
-#  nuis_data['res_sigma'] = 2.
-#
 #  osc_mc = {}
-#  osc_mc['theta23'] = 0.25*pi
+#
+#  osc_mc['theta23'] = asin(sqrt(0.56))
 #  osc_mc['dmsq_32'] = -2.44e-3
 #  osc_mc['dcp'] = 0.5*pi
 #  nuis_mc = {}
-#  nuis_mc['xsec_sigma'] = 0.
+#  nuis_mc['xsec_nue_sigma'] = 0.
+#  nuis_mc['xsec_numu_sigma'] = 0.
 #  nuis_mc['flux_sigma'] = 0.
 #
 #  model = Generate()
@@ -403,16 +558,16 @@ class Fitter():
 #
 #  c = TCanvas()
 #
-#  data = model.Data(osc_data, nuis_data)
+#  data = model.Data(osc_data, nuis_data, False)
 #  data.SetLineColor(kBlack)
-#  mc1 = model.MCCurve(osc_data, nuis_data)
+#  mc1 = model.MC(osc_data, nuis_data)
 #  mc1.SetLineColor(kBlue)
-#  mc2 = model.MCCurve(osc_mc, nuis_mc)
+#  mc2 = model.MC(osc_mc, nuis_mc)
 #  mc2.SetLineColor(kRed)
 #  data.Draw("ep same")
-#  mc1.Draw("same")
-#  mc2.Draw("same")
-#  data.GetYaxis().SetRangeUser(0, 1.5*data.GetMaximum())
+#  mc1.Draw("hist same")
+#  mc2.Draw("hist same")
+#  data.GetYaxis().SetRangeUser(0, 2*data.GetMaximum())
 #  data.GetXaxis().SetTitle("Neutrino Energy")
 #  data.GetYaxis().SetTitle("Number of Events")
 #  data.SetTitle("")
@@ -424,4 +579,4 @@ class Fitter():
 #  leg.SetBorderSize(0)
 #  leg.Draw()
 #
-#  c.Print("../pred_vs_data.png")
+#  c.Print("test.pdf")
