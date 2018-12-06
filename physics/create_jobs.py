@@ -1,9 +1,9 @@
 import os
 
 
-contour_2d_types = ['dcp__theta23_NH', 'dcp__theta23_IH', 'theta23__dmsq_32_NH', 'theta23__dmsq_32_IH']
 contour_1d_types = ['theta23_NH', 'theta23_IH', 'dmsq_32_NH', 'dmsq_32_IH',
                     'dcp_NHLO', 'dcp_NHUO', 'dcp_IHLO', 'dcp_IHUO', 'dcp_NH', 'dcp_IH']
+contour_2d_types = ['dcp__theta23_NH', 'dcp__theta23_IH', 'theta23__dmsq_32_NH', 'theta23__dmsq_32_IH']
 
 
 def create_job(contour_type, data_index, cluster, directory):
@@ -27,8 +27,6 @@ def create_job(contour_type, data_index, cluster, directory):
     sub_dir = os.path.join(directory, contour_type)
     if not os.path.exists(sub_dir):
         os.mkdir(sub_dir)
-    else:
-        print('Directory already exists')
 
     with open('{}.sh'.format(contour_type), 'w') as text_file:
         text_file.write('#!/bin/bash')
@@ -40,4 +38,8 @@ def create_job(contour_type, data_index, cluster, directory):
         text_file.write(' \n')
         text_file.write('#$ -t 1-{}'.format(data_index))
         text_file.write(' \n')
-        text_file.write('python fit_data.py $SGE_TASK_ID {h} {c} {s}'.format(h=hierarchy, c=contour_vars, s=sub_dir))
+        text_file.write('python fit_contour.py $SGE_TASK_ID {h} {c} {s}'.format(h=hierarchy, c=contour_vars, s=sub_dir))
+
+
+for c in contour_1d_types + contour_2d_types:
+    create_job(c, 10, 'pub8i', '/data/users/linggel/fc/physics/')
