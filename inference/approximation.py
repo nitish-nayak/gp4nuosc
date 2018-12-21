@@ -115,7 +115,7 @@ def expand_sample(priority, sample_size, n_delta, size, limit):
 
 def get_current_training(all_points, sample_size):
     """
-    Current training points for GP approximation.
+    Current training points for GP approximation where sample size is greater than zero.
     """
     current_indices = np.where(sample_size > 0)[0]
     current_points = all_points[current_indices]
@@ -129,7 +129,7 @@ def get_current_target(all_samples, all_obs, sample_size):
     :param all_samples: (2d numpy array) each row is the sample at a point
     :param all_obs: (1d numpy array) observed statistic vector
     :param sample_size: (1d numpy array) vector of sample size
-    :return:
+    :return: current_target, current_error (to be used in build_approximation)
     """
     current_indices = np.where(sample_size > 0)[0]
     n_training = current_indices.shape[0]
@@ -146,11 +146,17 @@ def get_current_target(all_samples, all_obs, sample_size):
     return current_target, current_error
 
 
-def build_approximation(current_points, current_target, current_error, all_points):
+def build_approximation(current_points, current_target, current_error, all_points, sigma=0.00001):
     """
-    Train GP approximation and make prediction.
+    Train Gaussian Process approximation and make prediction.
+    :param current_points: (2d numpy array) [number of points, dimension] coordinates of training points
+    :param current_target: (1d numpy array) [number of points] training target
+    :param current_error: (2d numpy array) [number of points, 2] confidence interval for target
+    :param all_points: (2d numpy array) [number of points, dimension] coordinates of all points
+    :param sigma: (float) small constant added to the diagonal
+    :return: gp_mean, gp_std (to be used for inference and acquisition function)
     """
-    variance = (current_error[:, 1] - current_error[:, 0]) ** 2 + 0.0001  # (diagonal) variance vector
+    variance = (current_error[:, 1] - current_error[:, 0]) ** 2 + sigma  # (diagonal) variance vector
     gp = GaussianProcessRegressor(kernel=RBF()+WhiteKernel(), alpha=variance, normalize_y=True)
     gp = gp.fit(current_points, current_target)
     return gp.predict(all_points, return_std=True)

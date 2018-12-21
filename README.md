@@ -4,13 +4,14 @@ Toy Feldman-Cousins Study for Neutrino Oscillations
 
 ## Physics / Feldman-Cousins
 
-* _toy.py_: neutrino oscillation implemented in PyRoot
-* _toy_fc.py_: produce Feldman-Cousins contour of likelihood ratio test (LRT) threshold
+PyROOT implementation of toy neutrino experiment
 
 ## Approximation
 
-* _utils.py, helper.py_: utility and helper functions
-* _approximation.py_: apply Gaussian process approximation
+* _utils.py_: utility functions for grid manipulation
+* _helper.py_:, helper functions for data processing
+* _plot.py_: matplotlib functions for making plots
+* _approximation.py_: Gaussian process approximation
 
 ## Notebooks
 
