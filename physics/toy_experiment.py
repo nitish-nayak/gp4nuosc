@@ -26,6 +26,34 @@ class Generate:
     self.trueENumu.SetParName(4, "dmsq_32")
     self.trueENumu.SetParName(5, "dcp")
     
+    self.resNue = TF1("resNue", self.ResolutionNue, -2, 2, 1)
+    self.resNue.SetParName(0, "res_nue_sigma")
+
+    self.resNumu = TF1("resNumu", self.ResolutionNumu, -2, 2, 1)
+    self.resNumu.SetParName(0, "res_numu_sigma")
+    
+    self.dist_convNue = TF1Convolution(self.trueENue, self.resNue, True)
+    self.dist_convNue.SetNofPointsFFT(500)
+    self.recoENue = TF1("recoENue", self.dist_convNue, 0.1, 5., self.dist_convNue.GetNpar())
+    self.recoENue.SetParName(0, "xsec_nue_sigma")
+    self.recoENue.SetParName(1, "xsec_numu_sigma")
+    self.recoENue.SetParName(2, "flux_sigma")
+    self.recoENue.SetParName(3, "theta23")
+    self.recoENue.SetParName(4, "dmsq_32")
+    self.recoENue.SetParName(5, "dcp")
+    self.recoENue.SetParName(6, "res_nue_sigma")
+    
+    self.dist_convNumu = TF1Convolution(self.trueENumu, self.resNumu, True)
+    self.dist_convNumu.SetNofPointsFFT(500)
+    self.recoENumu = TF1("recoENumu", self.dist_convNumu, 0.1, 5., self.dist_convNumu.GetNpar())
+    self.recoENumu.SetParName(0, "xsec_nue_sigma")
+    self.recoENumu.SetParName(1, "xsec_numu_sigma")
+    self.recoENumu.SetParName(2, "flux_sigma")
+    self.recoENumu.SetParName(3, "theta23")
+    self.recoENumu.SetParName(4, "dmsq_32")
+    self.recoENumu.SetParName(5, "dcp")
+    self.recoENumu.SetParName(6, "res_numu_sigma")
+    
     self.km2ev = 5.06773103202e+09
     self.k2 = 4.62711492217e-09
     self.GeV2eV = 1.0e+09
@@ -48,7 +76,7 @@ class Generate:
     form = 0.
     if E < 1:
       form = form + weight*(TMath.Landau(E, 1, 0.3))
-    if E > 1:
+    if E >= 1:
       form = form + weight*(1.79e-01*exp(-2.0e-02*(E-1)))
     return form
 
@@ -153,25 +181,65 @@ class Generate:
     osc_weight = self.NumuCalc(x[0], par[3], par[4])
     return toy_pot*unosc*osc_weight
 
+  def ResolutionNue(self, x, sigma):
+    res = 2*(0.11+0.03*sigma[0])
+    return TMath.Gaus(x[0], 0., res)/(res*sqrt(2.*pi))
+  
+  def ResolutionNumu(self, x, sigma):
+    res = 2*(0.08+0.02*sigma[0])
+    return TMath.Gaus(x[0], 0., res)/(res*sqrt(2.*pi))
+ 
   def SetParams(self, osc_params, nuis_params):
 
     for key in osc_params.keys():
       self.trueENue.SetParameter(key, float(osc_params[key]))
       self.trueENumu.SetParameter(key, float(osc_params[key]))
     for key in nuis_params.keys():
-      self.trueENue.SetParameter(key, float(nuis_params[key]))
-      self.trueENumu.SetParameter(key, float(nuis_params[key]))
+      if "res" not in key:
+        self.trueENue.SetParameter(key, float(nuis_params[key]))
+        self.trueENumu.SetParameter(key, float(nuis_params[key]))
+      if key == "res_nue_sigma":
+        self.resNue.SetParameter(key, float(nuis_params[key]))
+      if key == "res_numu_sigma":
+        self.resNumu.SetParameter(key, float(nuis_params[key]))
+
+    self.dist_convNue.Update()
+    self.dist_convNumu.Update()
+
+    for key in osc_params.keys():
+      self.recoENue.SetParameter(key, float(osc_params[key]))
+      self.recoENumu.SetParameter(key, float(osc_params[key]))
+    for key in nuis_params.keys():
+      if "res" not in key:
+        self.recoENue.SetParameter(key, float(nuis_params[key]))
+        self.recoENumu.SetParameter(key, float(nuis_params[key]))
+      if key == "res_nue_sigma":
+        self.recoENue.SetParameter(key, float(nuis_params[key]))
+      if key == "res_numu_sigma":
+        self.recoENumu.SetParameter(key, float(nuis_params[key]))
+
+    self.sampleInt = 500
+    self.xNue = array('d', self.sampleInt*[0.])
+    self.wNue = array('d', self.sampleInt*[0.])
+    self.recoENue.CalcGaussLegendreSamplingPoints(self.sampleInt, self.xNue, self.wNue, 1e-13)
+
+    self.xNumu = array('d', self.sampleInt*[0.])
+    self.wNumu = array('d', self.sampleInt*[0.])
+    self.recoENumu.CalcGaussLegendreSamplingPoints(self.sampleInt, self.xNumu, self.wNumu, 1e-13)
 
   def MC(self, osc_params, nuis_params, hname="recoE_pred"):
     
     self.SetParams(osc_params, nuis_params)
+    
     nbins_pred = 24
     recoE_pred = TH1D(hname, hname, nbins_pred, 0.5, 12.5)
     # actually fill prediction in analysis bins
     for binx in range(8):
-      recoE_pred.SetBinContent(binx+1, self.trueENue.Integral((float(binx)/2.)+0.5, (float(binx)/2.)+1.))
+      #  recoE_pred.SetBinContent(binx+1, self.trueENue.Integral((float(binx)/2.)+0.5, (float(binx)/2.)+1.))
+      recoE_pred.SetBinContent(binx+1, self.recoENue.IntegralFast(self.sampleInt, self.xNue, self.wNue, (float(binx)/2.)+0.5, (float(binx)/2.)+1.))
     for binx in range(16):
-      recoE_pred.SetBinContent(8+binx+1, self.trueENumu.Integral((float(binx)/4.)+0.5, (float(binx)/4.)+0.75))
+      #  recoE_pred.SetBinContent(8+binx+1, self.trueENumu.Integral((float(binx)/4.)+0.5, (float(binx)/4.)+0.75))
+      recoE_pred.SetBinContent(8+binx+1, self.recoENumu.IntegralFast(self.sampleInt, self.xNumu, self.wNumu, (float(binx)/4.)+0.5, (float(binx)/4.)+0.75))
 
     return recoE_pred
   
@@ -198,23 +266,31 @@ class Generate:
       recoE_data = self.MC(osc_params, nuis_params, hname)
     else: 
       nbins = 24
-      gRandom.SetSeed(0)
-      poisNue = TRandom3()
-      poisNue.SetSeed(0)
-      poisNumu = TRandom3()
-      poisNumu.SetSeed(0)
-      samplesNue = poisNue.Poisson(self.trueENue.Integral(0.1,5))
-      samplesNumu = poisNumu.Poisson(self.trueENumu.Integral(0.1,5))
+      #  gRandom.SetSeed(102)
+      poisNue = TRandom3(0)
+      #  poisNue.SetSeed(102)
+      poisNumu = TRandom3(0)
+      #  poisNumu.SetSeed(102)
+      #  samplesNue = poisNue.Poisson(self.trueENue.Integral(0.1,5))
+      #  samplesNumu = poisNumu.Poisson(self.trueENumu.Integral(0.1,5))
+      
+      samplesNue = poisNue.Poisson(self.recoENue.IntegralFast(self.sampleInt, self.xNue, self.wNue, 0.1,5))
+      samplesNumu = poisNumu.Poisson(self.recoENumu.IntegralFast(self.sampleInt, self.xNumu, self.wNumu, 0.1,5))
       recoE_data = TH1D(hname, hname, nbins, 0.5, 12.5)
+      
       for i in xrange(samplesNue):
         trueE_i = self.trueENue.GetRandom()
-        res_i = 1.
-        if trueE_i <= 4.5 and trueE_i > 0.5: 
-          recoE_data.Fill(trueE_i)
+        res_i = self.resNue.GetRandom() + 1
+        recoE_i = trueE_i*res_i
+        if recoE_i <= 4.5 and recoE_i > 0.5: 
+          recoE_data.Fill(recoE_i)
       for i in xrange(samplesNumu):
         trueE_i = self.trueENumu.GetRandom()
-        if trueE_i <= 4.5 and trueE_i > 0.5:
-          recoE_data.Fill(4.5+(2.*trueE_i-1.))
+        res_i = self.resNumu.GetRandom() + 1
+        recoE_i = trueE_i*res_i
+        #  recoE_i = self.recoENumu.GetRandom()
+        if recoE_i <= 4.5 and recoE_i > 0.5:
+          recoE_data.Fill(4.5+(2.*recoE_i-1.))
 
       poisNue.Delete()
       poisNumu.Delete()
@@ -532,51 +608,259 @@ kUnFitNumuSinSqTheta23LO = FitVarWithLL('ssth23', 'theta23', lambda x: sin(x)**2
 #  c.Print("test.pdf")
 
 #  for i in xrange(10000):
-  #  test.Fill(Dmsq32NHRand.Random())
+#    test.Fill(Dmsq32NHRand.Random())
+
+"""
+osc_data = {}
+osc_data['theta23'] = asin(sqrt(0.56))
+osc_data['dmsq_32'] = 2.44e-3
+osc_data['dcp'] = 1.5*pi
+nuis_data = {}
+nuis_data['xsec_nue_sigma'] = 0.
+nuis_data['xsec_numu_sigma'] = 0.
+nuis_data['res_nue_sigma'] = 1.
+nuis_data['res_numu_sigma'] = 1.
+nuis_data['flux_sigma'] = 0.
+
+osc_mc = {}
+osc_mc['theta23'] = asin(sqrt(0.56))
+osc_mc['dmsq_32'] = -2.44e-3
+osc_mc['dcp'] = 0.5*pi
+nuis_mc = {}
+nuis_mc['xsec_nue_sigma'] = 0.
+nuis_mc['xsec_numu_sigma'] = 0.
+nuis_mc['res_nue_sigma'] = 0.
+nuis_mc['res_numu_sigma'] = 0.0
+nuis_mc['flux_sigma'] = 0.
+
+model = Generate()
+gROOT.SetBatch(True)
+"""
+#  gXSec = TGraphErrors()
+#  gXSecCV = TGraph()
+#  gFlux = TGraphErrors()
+#  gFluxCV = TGraph()
+#  gOsc = TGraph()
+#  gPred = TGraph()
+#  gOscNH = TGraphErrors()
+#  gOscIH = TGraphErrors()
+#  gOscShaded = TMultiGraph()
+#  for i in range(1000):
+#      E = 5.*(i+1)/1000.
+#      #  XSeccv = model.XSec(E, 0)
+#      #  Fluxcv = model.Flux(E, 0)
+#      Osccv = model.NueCalc(E, osc_data['theta23'], osc_data['dmsq_32'], osc_data['dcp'], False)
+#      OscNH1 = model.NueCalc(E, asin(sqrt(0.44)), osc_data['dmsq_32'], 1.5*pi, False)
+#      OscNH2 = model.NueCalc(E, asin(sqrt(0.44)), osc_data['dmsq_32'], 0.5*pi, False)
+#      OscIH1 = model.NueCalc(E, osc_data['theta23'], -osc_data['dmsq_32'], 0.5*pi, False)
+#      OscIH2 = model.NueCalc(E, osc_data['theta23'], -osc_data['dmsq_32'], 1.5*pi, False)
+#      OscNHCV = 0.5*(OscNH1+OscNH2)
+#      OscIHCV = 0.5*(OscIH1+OscIH2)
+#      gOscNH.SetPoint(i, E, OscNHCV)
+#      gOscNH.SetPointError(i, E, abs(OscNH1-OscNHCV))
+#      gOscIH.SetPoint(i, E, OscIHCV)
+#      gOscIH.SetPointError(i, E, abs(OscIH1-OscIHCV))
 #
-#  osc_data = {}
-#  osc_data['theta23'] = asin(sqrt(0.56))
-#  osc_data['dmsq_32'] = 2.44e-3
-#  osc_data['dcp'] = 1.5*pi
-#  nuis_data = {}
-#  nuis_data['xsec_nue_sigma'] = 0.
-#  nuis_data['xsec_numu_sigma'] = 0.
-#  nuis_data['flux_sigma'] = 0.
-#  osc_mc = {}
+#      #  gXSec.SetPoint(i, E, XSeccv)
+#      #  gXSecCV.SetPoint(i, E, XSeccv)
+#      #  gXSec.SetPointError(i, E, model.XSec(E, 1) - XSeccv)
+#      #  gFlux.SetPoint(i, E, Fluxcv)
+#      #  gFluxCV.SetPoint(i, E, Fluxcv)
+#      #  gFlux.SetPointError(i, E, Fluxcv - model.Flux(E, -1) )
+#      #  gOsc.SetPoint(i, E, Osccv)
+#      #  gPred.SetPoint(i, E, 3.e4*Fluxcv*XSeccv*Osccv)
 #
-#  osc_mc['theta23'] = asin(sqrt(0.56))
-#  osc_mc['dmsq_32'] = -2.44e-3
-#  osc_mc['dcp'] = 0.5*pi
-#  nuis_mc = {}
-#  nuis_mc['xsec_nue_sigma'] = 0.
-#  nuis_mc['xsec_numu_sigma'] = 0.
-#  nuis_mc['flux_sigma'] = 0.
+#  gStyle.SetTitleSize(0.08, "t")
+#  c = TCanvas()
+#  gXSecCV.SetLineColor(kRed)
+#  gXSec.SetLineColor(kRed)
+#  gXSec.SetFillColor(kRed-7)
+#  gXSec.Draw("a3 same")
+#  gXSecCV.Draw("p same")
+#  gXSec.GetXaxis().SetRangeUser(0, 5)
+#  gXSec.GetYaxis().SetTitle("Arbitrary Units")
+#  gXSec.GetYaxis().SetTitleSize(0.05)
+#  gXSec.GetYaxis().SetTitleOffset(0.9)
+#  gXSec.GetXaxis().SetTitle("Neutrino Energy (GeV)")
+#  gXSec.GetXaxis().SetTitleSize(0.05)
+#  gXSec.GetXaxis().SetLabelSize(0.04)
+#  gXSec.GetXaxis().SetTitleOffset(0.9)
+#  gXSec.SetTitle("#nu_{e} Interaction Cross-Section")
+#  c.Print("xsec.pdf")
 #
-#  model = Generate()
-#  gROOT.SetBatch(True)
+#  c2 = TCanvas()
+#  gFluxCV.SetLineColor(kRed)
+#  gFlux.SetLineColor(kBlue)
+#  gFlux.SetFillColor(kBlue-7)
+#  gFlux.Draw("a3 same")
+#  gFluxCV.Draw("p same")
+#  gFlux.GetXaxis().SetRangeUser(0, 5)
+#  gFlux.GetYaxis().SetTitle("Arbitrary Units")
+#  gFlux.GetYaxis().SetTitleSize(0.05)
+#  gFlux.GetYaxis().SetTitleOffset(0.9)
+#  gFlux.GetXaxis().SetTitle("Neutrino Energy (GeV)")
+#  gFlux.GetXaxis().SetTitleSize(0.05)
+#  gFlux.GetXaxis().SetLabelSize(0.04)
+#  gFlux.GetXaxis().SetTitleOffset(0.9)
+#  gFlux.SetTitle("#nu_{#mu} Flux")
+#  c2.Print("flux.pdf")
+#
+#  c3 = TCanvas()
+#  gOsc.SetLineColor(kRed)
+#  gOsc.Draw("ac same")
+#  gOsc.GetXaxis().SetRangeUser(0, 5)
+#  gOsc.GetYaxis().SetRangeUser(0, 0.15)
+#  gOsc.GetYaxis().SetTitle("P(#nu_{#mu} #rightarrow #nu_{e})")
+#  gOsc.GetYaxis().SetTitleSize(0.05)
+#  gOsc.GetYaxis().SetTitleOffset(0.9)
+#  gOsc.GetXaxis().SetTitle("Neutrino Energy (GeV)")
+#  gOsc.GetXaxis().SetTitleSize(0.05)
+#  gOsc.GetXaxis().SetLabelSize(0.04)
+#  gOsc.GetXaxis().SetTitleOffset(0.9)
+#  gOsc.SetTitle("Oscillation Probability")
+#  c3.Print("osc.pdf")
+#
+#  c4 = TCanvas()
+#  gPred.SetLineColor(kRed)
+#  gPred.Draw("ac same")
+#  gPred.GetXaxis().SetRangeUser(0, 5)
+#  gPred.GetYaxis().SetTitle("Events")
+#  gPred.GetYaxis().SetTitleSize(0.05)
+#  gPred.GetYaxis().SetTitleOffset(0.9)
+#  gPred.GetXaxis().SetTitle("Neutrino Energy (GeV)")
+#  gPred.GetXaxis().SetTitleSize(0.05)
+#  gPred.GetXaxis().SetLabelSize(0.04)
+#  gPred.GetXaxis().SetTitleOffset(0.9)
+#  gPred.SetTitle("Prediction")
+#  c4.Print("pred.pdf")
+
+#  c5 = TCanvas()
+#  gOscNH.SetFillColorAlpha(kBlue, 0.57)
+#  gOscIH.SetFillColorAlpha(kRed, 0.57)
+#  gOscShaded.Add(gOscNH)
+#  gOscShaded.Add(gOscIH)
+#  gOscShaded.Draw("a3")
+#  gOscShaded.GetXaxis().SetRangeUser(0, 5)
+#  gOscShaded.GetYaxis().SetRangeUser(0, 0.12)
+#  gOscShaded.GetYaxis().SetTitle("P(#nu_{#mu} #rightarrow #nu_{e})")
+#  gOscShaded.GetYaxis().SetTitleSize(0.05)
+#  gOscShaded.GetYaxis().SetTitleOffset(0.9)
+#  gOscShaded.GetXaxis().SetTitle("Neutrino Energy (GeV)")
+#  gOscShaded.GetXaxis().SetTitleSize(0.05)
+#  gOscShaded.GetXaxis().SetLabelSize(0.04)
+#  gOscShaded.GetXaxis().SetTitleOffset(0.9)
+#  gOscShaded.GetHistogram().SetTitle("Oscillation Probability")
+#
+#  leg = TLegend(0.5, 0.5, 0.85, 0.85)
+#  leg.AddEntry(gOscNH, "#splitline{NH, sin^{2}#theta_{23} = 0.44}{#delta_{CP} = (0, 2#pi)}", "f")
+#  leg.AddEntry(gOscIH, "#splitline{IH, sin^{2}#theta_{23} = 0.56}{#delta_{CP} = (0, 2#pi)}", "f")
+#  leg.SetBorderSize(0)
+#  leg.SetTextSize(0.04)
+#  leg.Draw()
+#  c5.Print("osc_shaded.pdf")
+
 #  gStyle.SetOptStat(0)
 #
+#
+
 #  c = TCanvas()
+#  model.SetParams(osc_data, nuis_data)
+#  model.trueENumu.Draw()
+#  model.recoENumu.SetLineColor(kBlue)
+#  model.recoENumu.Draw("same")
+#  x = array('d', 1000*[0.])
+#  w = array('d', 1000*[0.])
+#  model.recoENumu.CalcGaussLegendreSamplingPoints(1000, x, w, 1e-13)
+#  print model.recoENumu.IntegralFast(1000, x, w, 1.2, 1.7), model.trueENumu.Integral(1.2, 1.7)
+#  c.Print("numu_pred.pdf")
 #
-#  data = model.Data(osc_data, nuis_data, False)
-#  data.SetLineColor(kBlack)
-#  mc1 = model.MC(osc_data, nuis_data)
-#  mc1.SetLineColor(kBlue)
-#  mc2 = model.MC(osc_mc, nuis_mc)
-#  mc2.SetLineColor(kRed)
-#  data.Draw("ep same")
-#  mc1.Draw("hist same")
-#  mc2.Draw("hist same")
-#  data.GetYaxis().SetRangeUser(0, 2*data.GetMaximum())
-#  data.GetXaxis().SetTitle("Neutrino Energy")
-#  data.GetYaxis().SetTitle("Number of Events")
-#  data.SetTitle("")
-#
-#  leg = TLegend(0.45, 0.6, 0.85, 0.85)
-#  leg.AddEntry(data, "Mock Observation", "le")
-#  leg.AddEntry(mc1, "Prediction (NH, sin^{2}#theta_{23}= 0.5, #delta_{CP}= 3#pi/2)", "l")
-#  leg.AddEntry(mc2, "Prediction (IH, sin^{2}#theta_{23}= 0.5, #delta_{CP}= #pi/2)", "l")
-#  leg.SetBorderSize(0)
-#  leg.Draw()
-#
-#  c.Print("test.pdf")
+#  c2 = TCanvas()
+#  model.SetParams(osc_data, nuis_data)
+#  model.trueENue.Draw()
+#  model.recoENue.SetLineColor(kBlue)
+#  model.recoENue.Draw("same")
+#  c2.Print("nue_pred.pdf")
+#  x = array('d', 1000*[0.])
+#  w = array('d', 1000*[0.])
+#  model.recoENue.CalcGaussLegendreSamplingPoints(1000, x, w, 1e-13)
+
+"""
+data = model.Data(osc_data, nuis_data, False)
+mc1 = model.MC(osc_data, nuis_data)
+mc2 = model.MC(osc_mc, nuis_mc)
+data_numu = TH1D("data_numu", "data_numu", 20, 0, 5)
+data_nue = TH1D("data_nue", "data_nue", 10, 0, 5)
+mc1_numu = TH1D("mc1_numu", "mc1_numu", 20, 0, 5)
+mc1_nue = TH1D("mc1_nue", "mc1_nue", 10, 0, 5)
+mc2_numu = TH1D("mc2_numu", "mc2_numu", 20, 0, 5)
+mc2_nue = TH1D("mc2_nue", "mc2_nue", 10, 0, 5)
+for i in range(1, 25):
+    if i <= 8:
+        data_nue.SetBinContent(i+1, data.GetBinContent(i))
+        mc1_nue.SetBinContent(i+1, mc1.GetBinContent(i))
+        mc2_nue.SetBinContent(i+1, mc2.GetBinContent(i))
+    else:
+        data_numu.SetBinContent(i-6, data.GetBinContent(i))
+        mc1_numu.SetBinContent(i-6, mc1.GetBinContent(i))
+        mc2_numu.SetBinContent(i-6, mc2.GetBinContent(i))
+
+
+c5 = TCanvas()
+print data_nue.Integral(), mc1_nue.Integral(), mc2_nue.Integral()
+data_nue.SetLineColor(kBlack)
+mc1_nue.SetLineColor(kBlue)
+mc2_nue.SetLineColor(kRed)
+mc1_nue.SetLineWidth(2)
+mc2_nue.SetLineWidth(2)
+data_nue.Draw("ep same")
+mc1_nue.Draw("hist same")
+mc2_nue.Draw("hist same")
+data_nue.GetYaxis().SetRangeUser(0, 1.3*data_nue.GetMaximum())
+data_nue.GetXaxis().SetTitle("Neutrino Energy (GeV)")
+data_nue.GetYaxis().SetTitle("Number of Events")
+data_nue.SetTitle("#nu_{#mu} #rightarrow #nu_{e}")
+data_nue.GetYaxis().SetTitleSize(0.05)
+data_nue.GetYaxis().SetTitleOffset(0.9)
+data_nue.GetXaxis().SetTitleSize(0.05)
+data_nue.GetXaxis().SetLabelSize(0.04)
+data_nue.GetXaxis().SetTitleOffset(0.9)
+
+leg_nue = TLegend(0.45, 0.5, 0.85, 0.85)
+leg_nue.AddEntry(data_nue, "Mock Observation", "le")
+leg_nue.AddEntry(mc1_nue, "#splitline{Prediction}{(NH, sin^{2}#theta_{23}= 0.56, #delta_{CP}= 3#pi/2)}", "l")
+leg_nue.AddEntry(mc2_nue, "#splitline{Prediction}{(IH, sin^{2}#theta_{23}= 0.56, #delta_{CP}= #pi/2)}", "l")
+leg_nue.SetBorderSize(0)
+leg_nue.SetTextSize(0.04)
+#  leg_nue.Draw()
+
+c5.Print("datamc_nue.pdf")
+
+c6 = TCanvas()
+print data_numu.Integral(), mc1_numu.Integral(), mc2_numu.Integral()
+data_numu.SetLineColor(kBlack)
+mc1_numu.SetLineColor(kBlue)
+mc2_numu.SetLineColor(kRed)
+mc1_numu.SetLineWidth(2)
+mc2_numu.SetLineWidth(2)
+data_numu.Draw("ep same")
+mc1_numu.Draw("hist same")
+mc2_numu.Draw("hist same")
+data_numu.GetYaxis().SetRangeUser(0, 1.3*data_numu.GetMaximum())
+data_numu.GetXaxis().SetTitle("Neutrino Energy (GeV)")
+data_numu.GetYaxis().SetTitle("Number of Events")
+data_numu.SetTitle("#nu_{#mu} #rightarrow #nu_{#mu}")
+data_numu.GetYaxis().SetTitleSize(0.05)
+data_numu.GetYaxis().SetTitleOffset(0.9)
+data_numu.GetXaxis().SetTitleSize(0.05)
+data_numu.GetXaxis().SetLabelSize(0.04)
+data_numu.GetXaxis().SetTitleOffset(0.9)
+
+leg_numu = TLegend(0.45, 0.6, 0.85, 0.85)
+leg_numu.AddEntry(data_numu, "Mock Observation", "le")
+leg_numu.AddEntry(mc1_numu, "Prediction (NH, sin^{2}#theta_{23}= 0.56, #delta_{CP}= 3#pi/2)", "l")
+leg_numu.AddEntry(mc2_numu, "Prediction (IH, sin^{2}#theta_{23}= 0.56, #delta_{CP}= #pi/2)", "l")
+leg_numu.SetBorderSize(0)
+#  leg_numu.Draw()
+
+c6.Print("datamc_numu.pdf")
+"""

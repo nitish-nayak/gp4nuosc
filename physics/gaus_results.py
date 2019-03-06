@@ -18,19 +18,23 @@ nuis_data = {}
 Gaus = GenerateRandom(SystLL, -4., 4., "syst")
 nuis_data['xsec_nue_sigma'] = Gaus.Random()
 nuis_data['xsec_numu_sigma'] = Gaus.Random()
+nuis_data['res_nue_sigma'] = Gaus.Random()
+nuis_data['res_numu_sigma'] = Gaus.Random()
 nuis_data['flux_sigma'] = Gaus.Random()
 print nuis_data
 
 nuis_init_seed = {}
 nuis_init_seed['xsec_nue_sigma'] = 0.
 nuis_init_seed['xsec_numu_sigma'] = 0.
+nuis_init_seed['res_nue_sigma'] = 0.
+nuis_init_seed['res_numu_sigma'] = 0.
 nuis_init_seed['flux_sigma'] = 0.
 
 model = Generate()
 data = model.Data(osc_data, nuis_data)
 
 #  save data first
-path_data = os.path.join('./data/', 'toy_data.txt')
+path_data = os.path.join('./data_with_res/', 'toy_data.txt')
 with open(path_data, 'w') as f:
   for i in range(data.GetNbinsX()):
     f.write(str(i)+','+str(data.GetBinContent(i+1))+'\n')
@@ -46,11 +50,13 @@ for ctypevar in contour_types:
 
   global_fit = fitter_global.Fit(data, osc_seed, nuis_seed, False)
 
-  path_global = os.path.join('./gaus_results/', ctypevar+'_global.txt')
+  path_global = os.path.join('./gaus_results_with_res/', ctypevar+'_global.txt')
   with open(path_global, 'w') as f:
-    f.write('{dcp},{dmsq_32},{theta23},{xsec_nue_sigma},{xsec_numu_sigma},{flux_sigma},{ll}\n'.format(
+    f.write('{dcp},{dmsq_32},{theta23},{xsec_nue_sigma},{xsec_numu_sigma},{flux_sigma},{res_nue_sigma},{res_numu_sigma},{ll}\n'.format(
              dcp=osc_seed['dcp'], dmsq_32=osc_seed['dmsq_32'], theta23=osc_seed['theta23'],
-             xsec_nue_sigma=nuis_seed['xsec_nue_sigma'],xsec_numu_sigma=nuis_seed['xsec_numu_sigma'], flux_sigma=nuis_seed['flux_sigma'],
+             xsec_nue_sigma=nuis_seed['xsec_nue_sigma'],xsec_numu_sigma=nuis_seed['xsec_numu_sigma'], 
+             flux_sigma=nuis_seed['flux_sigma'],
+             res_nue_sigma=nuis_seed['res_nue_sigma'],res_numu_sigma=nuis_seed['res_numu_sigma'], 
              ll=global_fit))
 
   for index in range(GRID_SIZE**len(cvars)):
@@ -63,9 +69,11 @@ for ctypevar in contour_types:
     osc_seed.update(profile_params)
     profile_fit = fitter_profile.Fit(data, osc_seed, nuis_seed, False)
 
-    path_profile = os.path.join('./gaus_results/', ctypevar+'_profile.txt')
+    path_profile = os.path.join('./gaus_results_with_res/', ctypevar+'_profile.txt')
     with open(path_profile, 'a') as f:
-      f.write('{dcp},{dmsq_32},{theta23},{xsec_nue_sigma},{xsec_numu_sigma},{flux_sigma},{ll}\n'.format(
+      f.write('{dcp},{dmsq_32},{theta23},{xsec_nue_sigma},{xsec_numu_sigma},{flux_sigma},{res_nue_sigma},{res_numu_sigma},{ll}\n'.format(
                 dcp=osc_seed['dcp'], dmsq_32=osc_seed['dmsq_32'], theta23=osc_seed['theta23'],
-                xsec_nue_sigma=nuis_seed['xsec_nue_sigma'],xsec_numu_sigma=nuis_seed['xsec_numu_sigma'], flux_sigma=nuis_seed['flux_sigma'],
+                xsec_nue_sigma=nuis_seed['xsec_nue_sigma'],xsec_numu_sigma=nuis_seed['xsec_numu_sigma'], 
+                flux_sigma=nuis_seed['flux_sigma'],
+                res_nue_sigma=nuis_seed['res_nue_sigma'],res_numu_sigma=nuis_seed['res_numu_sigma'], 
                 ll=profile_fit-global_fit))
