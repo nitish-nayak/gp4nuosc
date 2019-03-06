@@ -12,7 +12,7 @@ class Contour:
     self.grid = grid_size
     self.contour = {}
    
-    self.nuis_vars = ['xsec_nue_sigma', 'xsec_numu_sigma', 'flux_sigma']
+    self.nuis_vars = ['xsec_nue_sigma', 'xsec_numu_sigma', 'flux_sigma', 'res_nue_sigma', 'res_numu_sigma']
     self.fitglobalvars = [kFitDcpInPi, kFitSinSqTheta23, kFitDmsq32]
     self.fitprofilevars = []
 
@@ -88,7 +88,7 @@ class Contour:
          profile_params['theta23'] = asin(sqrt(0.5-abs(0.5-ssth23)))
        if "UO" in self.ctype:
          profile_params['theta23'] = asin(sqrt(0.5+abs(0.5-ssth23)))
-       else:
+       if "UO" not in self.ctype and "LO" not in self.ctype:
          profile_params['theta23'] = data_params['theta23']
      return profile_params
      
