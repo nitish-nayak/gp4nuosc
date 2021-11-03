@@ -1,4 +1,4 @@
-# ToyNuOscCI
+# gp4nuosc
 
 Approximating Feldman-Cousins Confidence Intervals using a Gaussian Process for Neutrino Oscillations. 
 
